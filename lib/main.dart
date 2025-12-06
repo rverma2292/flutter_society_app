@@ -226,10 +226,18 @@ class _ShowQRPageState extends State<ShowQRPage> {
                   return Card(
                     margin: EdgeInsets.symmetric(vertical: 6),
                     child: ListTile(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => FullScreenQR(resident: r),
+                          ),
+                        );
+                      },
                       leading: QrImageView(
-                        data: r.id,      // <- unique QR data
+                        data: r.id,
                         version: QrVersions.auto,
-                        size: 60,         // <- widget size
+                        size: 60,
                       ),
                       title: Text(r.name),
                       subtitle: Text("Flat: ${r.flat} | Block: ${r.block}"),
@@ -244,6 +252,46 @@ class _ShowQRPageState extends State<ShowQRPage> {
     );
   }
 }
+
+class FullScreenQR extends StatelessWidget {
+  final Resident resident;
+
+  const FullScreenQR({required this.resident});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(resident.name),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            QrImageView(
+              data: resident.id,
+              version: QrVersions.auto,
+              size: 300, // <- BADA QR
+            ),
+            SizedBox(height: 20),
+            Text(
+              resident.name,
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              "Flat: ${resident.flat} | Block: ${resident.block}",
+              style: TextStyle(fontSize: 18),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 
 // Placeholder for Scan QR
 class PlaceholderPage extends StatelessWidget {
