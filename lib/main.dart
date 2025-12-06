@@ -19,7 +19,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:hive/hive.dart'; // to save data with hive
 import 'package:hive_flutter/hive_flutter.dart';
 
-part 'resident.g.dart'; // Hive code generate ke liye
+
 
 void main() {
   runApp(MyApp());
