@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.example.society_qr_app"
-    compileSdk = 34 //flutter.compileSdkVersion
+    compileSdk = 36 //flutter.compileSdkVersion
     ndkVersion = "27.0.12077973"//flutter.ndkVersion
 
     compileOptions {
@@ -24,8 +24,8 @@ android {
         applicationId = "com.example.society_qr_app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = 21//flutter.minSdkVersion
-        targetSdk = 34//flutter.targetSdkVersion
+        minSdk = 23//flutter.minSdkVersion
+        targetSdk = 36//flutter.targetSdkVersion
         versionCode = 1//flutter.versionCode
         versionName = "1.0"//flutter.versionName
     }

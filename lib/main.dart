@@ -1,7 +1,17 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:qr_flutter/qr_flutter.dart'; // <- isko import karo
+// qr import
+import 'package:qr_flutter/qr_flutter.dart';
+// share import
+import 'package:share_plus/share_plus.dart';
+import 'dart:typed_data';
+import 'dart:ui';
+import 'dart:ui';
+import 'package:flutter/rendering.dart';
+// path provide to use in share
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 
 void main() {
   runApp(MyApp());
@@ -255,31 +265,72 @@ class _ShowQRPageState extends State<ShowQRPage> {
 
 class FullScreenQR extends StatelessWidget {
   final Resident resident;
+  final GlobalKey qrKey = GlobalKey();
 
-  const FullScreenQR({required this.resident});
+  FullScreenQR({required this.resident});
+
+  Future<void> shareQR() async {
+  try {
+    // Use QrPainter directly
+    final qrValidationResult = QrValidator.validate(
+      data: resident.id,
+      version: QrVersions.auto,
+      errorCorrectionLevel: QrErrorCorrectLevel.Q,
+    );
+    if (qrValidationResult.status == QrValidationStatus.valid) {
+      final qrCode = qrValidationResult.qrCode!;
+      final painter = QrPainter.withQr(
+        qr: qrCode,
+        color: Colors.black,
+        gapless: true,
+        emptyColor: Colors.white,
+      );
+
+      // Convert to image bytes
+      final picData = await painter.toImageData(200, format: ImageByteFormat.png);
+      final bytes = picData!.buffer.asUint8List();
+
+      // Save to temporary file
+      final tempDir = await getTemporaryDirectory();
+      final file = await File('${tempDir.path}/${resident.name}_QR.png').create();
+      await file.writeAsBytes(bytes);
+
+      // Share file
+      await Share.shareXFiles([XFile(file.path)], text: 'QR Code for ${resident.name}');
+    }
+  } catch (e) {
+    print("Error sharing QR: $e");
+  }
+}
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(resident.name),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.share),
+            onPressed: shareQR,
+          ),
+        ],
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            QrImageView(
-              data: resident.id,
-              version: QrVersions.auto,
-              size: 300, // <- BADA QR
+            RepaintBoundary(
+              key: qrKey,
+              child: QrImageView(
+                data: resident.id,
+                version: QrVersions.auto,
+                size: 300, // <- BADA QR
+              ),
             ),
             SizedBox(height: 20),
             Text(
               resident.name,
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             Text(
               "Flat: ${resident.flat} | Block: ${resident.block}",
