@@ -16,6 +16,10 @@ import 'dart:io';
 import 'package:mobile_scanner/mobile_scanner.dart';
 // image picker added
 import 'package:image_picker/image_picker.dart';
+import 'package:hive/hive.dart'; // to save data with hive
+import 'package:hive_flutter/hive_flutter.dart';
+
+part 'resident.g.dart'; // Hive code generate ke liye
 
 void main() {
   runApp(MyApp());
@@ -153,7 +157,68 @@ class _ResidentsPageState extends State<ResidentsPage> {
       residents = data.map((json) => Resident.fromJson(json)).toList();
     });
   }
+  // ----------------- Add Resident Dialog -----------------
+  void _showAddResidentDialog() {
+    final _nameController = TextEditingController();
+    final _flatController = TextEditingController();
+    final _blockController = TextEditingController();
+    final _mobileController = TextEditingController();
 
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Add Resident"),
+        content: SingleChildScrollView(
+          child: Column(
+            children: [
+              TextField(
+                controller: _nameController,
+                decoration: InputDecoration(labelText: "Name"),
+              ),
+              TextField(
+                controller: _flatController,
+                decoration: InputDecoration(labelText: "Flat"),
+              ),
+              TextField(
+                controller: _blockController,
+                decoration: InputDecoration(labelText: "Block"),
+              ),
+              TextField(
+                controller: _mobileController,
+                decoration: InputDecoration(labelText: "Mobile"),
+                keyboardType: TextInputType.phone,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            child: Text("Cancel"),
+            onPressed: () => Navigator.pop(context),
+          ),
+          ElevatedButton(
+            child: Text("Add"),
+            onPressed: () {
+              final newResident = Resident(
+                id: "R${residents.length + 101}", // simple auto id
+                name: _nameController.text,
+                flat: _flatController.text,
+                block: _blockController.text,
+                mobile: _mobileController.text,
+              );
+
+              setState(() {
+                residents.add(newResident);
+              });
+
+              Navigator.pop(context);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+  // ----------------- End Add Resident Dialog -----------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -172,6 +237,11 @@ class _ResidentsPageState extends State<ResidentsPage> {
                 );
               },
             ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showAddResidentDialog,
+        child: Icon(Icons.add),
+        tooltip: "Add Resident",
+      ),
     );
   }
 }
