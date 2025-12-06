@@ -274,38 +274,62 @@ class FullScreenQR extends StatelessWidget {
   FullScreenQR({required this.resident});
 
   Future<void> shareQR() async {
-  try {
-    // Use QrPainter directly
-    final qrValidationResult = QrValidator.validate(
-      data: resident.id,
-      version: QrVersions.auto,
-      errorCorrectionLevel: QrErrorCorrectLevel.Q,
-    );
-    if (qrValidationResult.status == QrValidationStatus.valid) {
-      final qrCode = qrValidationResult.qrCode!;
-      final painter = QrPainter.withQr(
-        qr: qrCode,
-        color: Colors.black,
-        gapless: true,
-        emptyColor: Colors.white,
+    try {
+      final qrValidationResult = QrValidator.validate(
+        data: resident.id,
+        version: QrVersions.auto,
+        errorCorrectionLevel: QrErrorCorrectLevel.Q,
       );
+      if (qrValidationResult.status == QrValidationStatus.valid) {
+        final qrCode = qrValidationResult.qrCode!;
+        final painter = QrPainter.withQr(
+          qr: qrCode,
+          color: Colors.black,
+          gapless: true,
+          emptyColor: Colors.white,
+        );
 
-      // Convert to image bytes
-      final picData = await painter.toImageData(200, format: ImageByteFormat.png);
-      final bytes = picData!.buffer.asUint8List();
+        // Create image with padding (margin) all around
+        final picData = await painter.toImageData(400, format: ImageByteFormat.png); // base size
+        final Uint8List bytes = picData!.buffer.asUint8List();
 
-      // Save to temporary file
-      final tempDir = await getTemporaryDirectory();
-      final file = await File('${tempDir.path}/${resident.name}_QR.png').create();
-      await file.writeAsBytes(bytes);
+        // Wrap image in a white container with padding for top/bottom/left/right
+        final recorder = PictureRecorder();
+        final canvas = Canvas(recorder);
+        final paint = Paint()..color = Colors.white;
+        final double margin = 60; // top/bottom/left/right margin
 
-      // Share file
-      await Share.shareXFiles([XFile(file.path)], text: 'QR Code for ${resident.name}');
+        // White background
+        canvas.drawRect(
+          Rect.fromLTWH(0, 0, 400 + margin * 2, 400 + margin * 2),
+          paint,
+        );
+
+        // Draw QR in center
+        final codec = await instantiateImageCodec(bytes);
+        final frame = await codec.getNextFrame();
+        canvas.drawImage(frame.image, Offset(margin, margin), Paint());
+
+        final picture = recorder.endRecording();
+        final img = await picture.toImage(
+          (400 + margin * 2).toInt(),  // <- yaha toInt() lagaya
+          (400 + margin * 2).toInt(),  // <- yaha bhi toInt()
+        );
+        final finalBytes = await img.toByteData(format: ImageByteFormat.png);
+
+        // Save to file and share
+        final tempDir = await getTemporaryDirectory();
+        final file = await File('${tempDir.path}/${resident.name}_QR.png').create();
+        await file.writeAsBytes(finalBytes!.buffer.asUint8List());
+
+        await Share.shareXFiles([XFile(file.path)], text: 'QR Code for ${resident.name}');
+      }
+    } catch (e) {
+      print("Error sharing QR: $e");
     }
-  } catch (e) {
-    print("Error sharing QR: $e");
   }
-}
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -319,26 +343,31 @@ class FullScreenQR extends StatelessWidget {
           ),
         ],
       ),
+      backgroundColor: Colors.white, // Pure page white
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             RepaintBoundary(
               key: qrKey,
-              child: QrImageView(
-                data: resident.id,
-                version: QrVersions.auto,
-                size: 300, // <- BADA QR
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 40), // left-right margin
+                color: Colors.white,
+                child: QrImageView(
+                  data: resident.id,
+                  version: QrVersions.auto,
+                  size: MediaQuery.of(context).size.width - 80, // screen width - margins
+                ),
               ),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             Text(
               resident.name,
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             Text(
               "Flat: ${resident.flat} | Block: ${resident.block}",
-              style: TextStyle(fontSize: 18),
+              style: const TextStyle(fontSize: 18),
             ),
           ],
         ),
@@ -346,6 +375,7 @@ class FullScreenQR extends StatelessWidget {
     );
   }
 }
+
 
 
 // Placeholder for Scan QR
