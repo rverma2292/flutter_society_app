@@ -12,6 +12,9 @@ import 'package:flutter/rendering.dart';
 // path provide to use in share
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+//mobile scanner
+import 'package:mobile_scanner/mobile_scanner.dart';
+
 
 void main() {
   runApp(MyApp());
@@ -87,7 +90,7 @@ class MenuPage extends StatelessWidget {
               color: Colors.orange,
               onTap: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => PlaceholderPage(title: "Scan QR")),
+                MaterialPageRoute(builder: (_) => ScanQRPage()),
               ),
             ),
           ],
@@ -356,6 +359,123 @@ class PlaceholderPage extends StatelessWidget {
       appBar: AppBar(title: Text(title)),
       body: Center(
         child: Text("$title feature coming soon!", style: TextStyle(fontSize: 18)),
+      ),
+    );
+  }
+}
+
+class ScanQRPage extends StatefulWidget {
+  @override
+  _ScanQRPageState createState() => _ScanQRPageState();
+}
+
+class _ScanQRPageState extends State<ScanQRPage> {
+  String scannedData = "";
+  Map<String, dynamic>? scannedResident;
+
+  List<dynamic> residents = [];
+
+  final MobileScannerController controller = MobileScannerController(
+    detectionSpeed: DetectionSpeed.normal,
+    facing: CameraFacing.back,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    loadResidents();
+  }
+
+  Future<void> loadResidents() async {
+    final String response = await rootBundle.loadString('assets/residents.json');
+    residents = json.decode(response);
+  }
+
+  void processScan(String id) {
+    final matched = residents.firstWhere(
+          (r) => r["id"] == id,
+      orElse: () => null,
+    );
+
+    setState(() {
+      scannedData = id;
+      scannedResident = matched;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Scan QR"),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.flash_on),
+            onPressed: () {
+              controller.toggleTorch();
+            },
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            flex: 3,
+            child: MobileScanner(
+              controller: controller,
+              onDetect: (capture) {
+                final barcode = capture.barcodes.first;
+                final text = barcode.rawValue ?? "";
+
+                if (text.isNotEmpty && scannedData.isEmpty) {
+                  processScan(text);
+                }
+              },
+            ),
+          ),
+
+          // Result Box
+          Expanded(
+            flex: 1,
+            child: Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(20),
+              color: Colors.grey.shade200,
+              child: scannedResident == null
+                  ? Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text("Scanned ID: $scannedData"),
+                  SizedBox(height: 10),
+                  Text(
+                    scannedData.isEmpty
+                        ? "Waiting for scan..."
+                        : "Resident not found!",
+                    style: TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              )
+                  : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    "Resident Found!",
+                    style: TextStyle(
+                        fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 10),
+                  Text("Name: ${scannedResident!['name']}",
+                      style: TextStyle(fontSize: 18)),
+                  Text("Flat: ${scannedResident!['flat']}",
+                      style: TextStyle(fontSize: 18)),
+                  Text("Block: ${scannedResident!['block']}",
+                      style: TextStyle(fontSize: 18)),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
