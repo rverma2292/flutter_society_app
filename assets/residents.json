@@ -1,0 +1,52 @@
+[
+    {
+        "id": "R101",
+        "name": "Rahul Ranjan",
+        "flat": "101",
+        "block": "A",
+        "mobile": "9876543210"
+    },
+    {
+        "id": "R102",
+        "name": "Priya Singh",
+        "flat": "102",
+        "block": "A",
+        "mobile": "9876501234"
+    },
+    {
+        "id": "R103",
+        "name": "Amit Kumar",
+        "flat": "201",
+        "block": "B",
+        "mobile": "9876512340"
+    },
+    {
+        "id": "R104",
+        "name": "Puran Chand",
+        "flat": "202",
+        "block": "B",
+        "mobile": "9876512341"
+    },
+    {
+        "id": "R105",
+        "name": "Dinesh Kumar",
+        "flat": "316",
+        "block": "B",
+        "mobile": "9876512340"
+    },
+    {
+        "id": "R106",
+        "name": "Chandan Kumar",
+        "flat": "312",
+        "block": "B",
+        "mobile": "9976512340"
+    },
+    {
+        "id": "R107",
+        "name": "Ajay Kumar",
+        "flat": "306",
+        "block": "B",
+        "mobile": "9876512340"
+    }
+
+]
