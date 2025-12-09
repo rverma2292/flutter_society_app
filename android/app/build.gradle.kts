@@ -39,6 +39,7 @@ android {
             isShrinkResources = false
         }
         debug {
+            isDebuggable = true
             isMinifyEnabled = false
             isShrinkResources = false
         }
