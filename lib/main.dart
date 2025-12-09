@@ -7,7 +7,6 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:typed_data';
 import 'dart:ui';
-import 'dart:ui';
 import 'package:flutter/rendering.dart';
 // path provide to use in share
 import 'package:path_provider/path_provider.dart';
@@ -18,10 +17,12 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:hive/hive.dart'; // to save data with hive
 import 'package:hive_flutter/hive_flutter.dart';
+import 'resident.dart'; // Resident model import karo
+import 'database_helper.dart';
 
 
 
-void main() {
+void main() async {
   runApp(MyApp());
 }
 
@@ -36,7 +37,8 @@ class MyApp extends StatelessWidget {
   }
 }
 
-// Resident Model
+/*
+// Old Resident model
 class Resident {
   final String id;
   final String name;
@@ -62,6 +64,7 @@ class Resident {
     );
   }
 }
+*/
 
 // Initial Page with buttons
 class MenuPage extends StatelessWidget {
@@ -147,9 +150,11 @@ class _ResidentsPageState extends State<ResidentsPage> {
   @override
   void initState() {
     super.initState();
-    loadResidents();
+    loadResidents(); // Purana resident.json wala code commented
   }
 
+  /*
+  // Old code for loading from JSON (commented)
   Future<void> loadResidents() async {
     final String response = await rootBundle.loadString('assets/residents.json');
     final List<dynamic> data = json.decode(response);
@@ -157,94 +162,206 @@ class _ResidentsPageState extends State<ResidentsPage> {
       residents = data.map((json) => Resident.fromJson(json)).toList();
     });
   }
-  // ----------------- Add Resident Dialog -----------------
-  void _showAddResidentDialog() {
-    final _nameController = TextEditingController();
-    final _flatController = TextEditingController();
-    final _blockController = TextEditingController();
-    final _mobileController = TextEditingController();
+  */
 
-    showDialog(
+  Future<void> loadResidents() async {
+    final rows = await DatabaseHelper.instance.getAllResidents();
+
+    setState(() {
+      residents = rows.map((data) => Resident.fromMap(data)).toList();
+    });
+  }
+
+
+  /// ---------- Add Resident (Hive Save) ----------
+  Future<void> addResident(BuildContext context) async {
+    final nameController = TextEditingController();
+    final flatController = TextEditingController();
+    final blockController = TextEditingController();
+    final mobileController = TextEditingController();
+
+    await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: Text("Add Resident"),
         content: SingleChildScrollView(
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
-                controller: _nameController,
-                decoration: InputDecoration(labelText: "Name"),
-              ),
-              TextField(
-                controller: _flatController,
-                decoration: InputDecoration(labelText: "Flat"),
-              ),
-              TextField(
-                controller: _blockController,
-                decoration: InputDecoration(labelText: "Block"),
-              ),
-              TextField(
-                controller: _mobileController,
-                decoration: InputDecoration(labelText: "Mobile"),
-                keyboardType: TextInputType.phone,
-              ),
+              // ID फ़ील्ड हटा दिया गया है, क्योंकि SQL इसे स्वचालित रूप से उत्पन्न करता है
+              TextField(controller: nameController, decoration: InputDecoration(labelText: "Name")),
+              TextField(controller: flatController, decoration: InputDecoration(labelText: "Flat")),
+              TextField(controller: blockController, decoration: InputDecoration(labelText: "Block")),
+              TextField(controller: mobileController, decoration: InputDecoration(labelText: "Mobile")),
             ],
           ),
         ),
         actions: [
           TextButton(
+            onPressed: () => Navigator.pop(ctx),
             child: Text("Cancel"),
-            onPressed: () => Navigator.pop(context),
           ),
           ElevatedButton(
-            child: Text("Add"),
-            onPressed: () {
-              final newResident = Resident(
-                id: "R${residents.length + 101}", // simple auto id
-                name: _nameController.text,
-                flat: _flatController.text,
-                block: _blockController.text,
-                mobile: _mobileController.text,
-              );
+            onPressed: () async {
+              // यह सुनिश्चित करने के लिए जांचें कि कोई भी फ़ील्ड खाली न हो
+              if (nameController.text.isEmpty ||
+                  flatController.text.isEmpty ||
+                  blockController.text.isEmpty ||
+                  mobileController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("Please fill all fields.")),
+                );
+                return;
+              }
 
-              setState(() {
-                residents.add(newResident);
-              });
+              final now = DateTime.now().toIso8601String();
 
-              Navigator.pop(context);
+              // सुनिश्चित करें कि कॉलम नाम ('created_at') आपके DatabaseHelper से मेल खाते हैं
+              final newResident = {
+                "name": nameController.text,
+                "flat": flatController.text,
+                "block": blockController.text,
+                "mobile": mobileController.text,
+                "created_at": now,
+                "updated_at": now,
+              };
+
+              await DatabaseHelper.instance.insertResident(newResident);
+              await loadResidents(); // सूची को रीफ़्रेश करें
+              Navigator.pop(ctx);
             },
+            child: Text("Save"),
           ),
         ],
       ),
     );
   }
-  // ----------------- End Add Resident Dialog -----------------
+
+
+  // ----------------- Edit Resident Dialog -----------------
+  Future<void> editResident(BuildContext context, Resident resident) async {
+    final nameController = TextEditingController(text: resident.name);
+    final flatController = TextEditingController(text: resident.flat);
+    final blockController = TextEditingController(text: resident.block);
+    final mobileController = TextEditingController(text: resident.mobile);
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text("Edit Resident"),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: TextEditingController(text: resident.id.toString()),
+                decoration: InputDecoration(labelText: "ID (cannot be changed)"),
+                readOnly: true,
+              ),
+              TextField(controller: nameController, decoration: InputDecoration(labelText: "Name")),
+              TextField(controller: flatController, decoration: InputDecoration(labelText: "Flat")),
+              TextField(controller: blockController, decoration: InputDecoration(labelText: "Block")),
+              TextField(controller: mobileController, decoration: InputDecoration(labelText: "Mobile")),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final now = DateTime.now().toIso8601String();
+
+              final updatedData = {
+                "id": resident.id,
+                "name": nameController.text,
+                "flat": flatController.text,
+                "block": blockController.text,
+                "mobile": mobileController.text,
+                "created_at": resident.created_at,
+                "updated_at": now,
+              };
+
+              await DatabaseHelper.instance.updateResident(updatedData);
+              await loadResidents();
+              Navigator.pop(ctx);
+            },
+            child: Text("Save"),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Resident List")),
+      appBar: AppBar(
+          title: Text("Resident List")),
       body: residents.isEmpty
-          ? Center(child: CircularProgressIndicator())
+          ? Center(child: Text("No Residents Found"))
           : ListView.builder(
-              itemCount: residents.length,
-              itemBuilder: (context, index) {
-                final r = residents[index];
-                return ListTile(
-                  leading: CircleAvatar(child: Text(r.flat)),
-                  title: Text(r.name),
-                  subtitle: Text("Block: ${r.block}\nMobile: ${r.mobile}"),
-                  isThreeLine: true,
-                );
-              },
+        itemCount: residents.length,
+        itemBuilder: (context, index) {
+          final r = residents[index];
+          return ListTile(
+            leading: CircleAvatar(child: Text(r.flat)),
+            title: Text(r.name),
+            subtitle: Text("Block: ${r.block}\nMobile: ${r.mobile}"),
+            isThreeLine: true,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: Icon(Icons.edit),
+                  onPressed: () => editResident(context, r),
+                ),
+                IconButton(
+                  icon: Icon(Icons.delete, color: Colors.red),
+                  onPressed: () async {
+                    // Confirm dialog before deleting
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: Text('Delete Resident?'),
+                        content: Text('Are you sure you want to delete ${r.name}?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: Text('Cancel'),
+                          ),
+                          ElevatedButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: Text('Delete'),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (confirm == true) {
+                      await DatabaseHelper.instance.deleteResident(r.id.toString());
+                      await loadResidents(); // Refresh list
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('${r.name} deleted successfully!')),
+                      );
+                    }
+                  },
+                ),
+              ],
             ),
+          );
+        },
+      ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _showAddResidentDialog,
+        onPressed: () => addResident(context),
         child: Icon(Icons.add),
         tooltip: "Add Resident",
       ),
     );
   }
 }
+
 
 // Show QR Page with filter
 class ShowQRPage extends StatefulWidget {
@@ -262,12 +379,23 @@ class _ShowQRPageState extends State<ShowQRPage> {
     super.initState();
     loadResidents();
   }
-
+  /*
+  // Resident List with Json File
   Future<void> loadResidents() async {
     final String response = await rootBundle.loadString('assets/residents.json');
     final List<dynamic> data = json.decode(response);
     setState(() {
       residents = data.map((json) => Resident.fromJson(json)).toList();
+      filtered = residents;
+    });
+  }
+  */
+
+  Future<void> loadResidents() async {
+    final rows = await DatabaseHelper.instance.getAllResidents();
+
+    setState(() {
+      residents = rows.map((data) => Resident.fromMap(data)).toList();
       filtered = residents;
     });
   }
@@ -319,7 +447,7 @@ class _ShowQRPageState extends State<ShowQRPage> {
                         );
                       },
                       leading: QrImageView(
-                        data: r.id,
+                        data: r.id.toString(),
                         version: QrVersions.auto,
                         size: 60,
                       ),
@@ -346,7 +474,7 @@ class FullScreenQR extends StatelessWidget {
   Future<void> shareQR() async {
     try {
       final qrValidationResult = QrValidator.validate(
-        data: resident.id,
+        data: resident.id.toString(),
         version: QrVersions.auto,
         errorCorrectionLevel: QrErrorCorrectLevel.Q,
       );
@@ -382,8 +510,8 @@ class FullScreenQR extends StatelessWidget {
 
         final picture = recorder.endRecording();
         final img = await picture.toImage(
-          (400 + margin * 2).toInt(),  // <- yaha toInt() lagaya
-          (400 + margin * 2).toInt(),  // <- yaha bhi toInt()
+          (400 + margin * 2).toInt(),
+          (400 + margin * 2).toInt(),
         );
         final finalBytes = await img.toByteData(format: ImageByteFormat.png);
 
@@ -413,7 +541,7 @@ class FullScreenQR extends StatelessWidget {
           ),
         ],
       ),
-      backgroundColor: Colors.white, // Pure page white
+      backgroundColor: Colors.white,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -424,7 +552,7 @@ class FullScreenQR extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 40), // left-right margin
                 color: Colors.white,
                 child: QrImageView(
-                  data: resident.id,
+                  data: resident.id.toString(),
                   version: QrVersions.auto,
                   size: MediaQuery.of(context).size.width - 80, // screen width - margins
                 ),
@@ -491,9 +619,14 @@ class _ScanQRPageState extends State<ScanQRPage> {
   }
 
   Future<void> loadResidents() async {
-    final String response = await rootBundle.loadString('assets/residents.json');
-    residents = json.decode(response);
+    final data = await DatabaseHelper.instance.getAllResidents();
+    if (mounted) {
+      setState(() {
+        residents = data;
+      });
+    }
   }
+
 
   /// ---------- CAMERA SCAN CALLBACK ----------
   void _onDetect(BarcodeCapture capture) {
@@ -533,11 +666,17 @@ class _ScanQRPageState extends State<ScanQRPage> {
 
   /// ---------- PROCESS SCAN ----------
   void processScan(Barcode barcode) {
-    final id = barcode.rawValue ?? "";
-    final matched = residents.firstWhere(
-          (r) => r["id"] == id,
-      orElse: () => null,
-    );
+    final idString = barcode.rawValue ?? "";
+    final id = int.tryParse(idString);
+
+    dynamic matched;
+    if (id != null) {
+      try {
+        matched = residents.firstWhere((r) => r["id"] == id);
+      } catch (e) {
+        matched = null;
+      }
+    }
 
     setState(() {
       scannedCode = barcode;
