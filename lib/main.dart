@@ -19,6 +19,8 @@ import 'package:hive/hive.dart'; // to save data with hive
 import 'package:hive_flutter/hive_flutter.dart';
 import 'resident.dart'; // Resident model import karo
 import 'database_helper.dart';
+import 'package:flutter/scheduler.dart';
+
 
 
 
@@ -101,12 +103,24 @@ class MenuPage extends StatelessWidget {
                 MaterialPageRoute(builder: (_) => ScanQRPage()),
               ),
             ),
+            SizedBox(height: 16),
+            MenuButton(
+              title: "Seed Residents",
+              color: Colors.purple,
+              onTap: () async {
+                await DatabaseHelper.instance.seedResidents();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("Residents seeded successfully!")),
+                );
+              },
+            ),
           ],
         ),
       ),
     );
   }
 }
+
 
 // Reusable colorful button
 class MenuButton extends StatelessWidget {
@@ -139,18 +153,19 @@ class MenuButton extends StatelessWidget {
 }
 
 // Residents Page
-class ResidentsPage extends StatefulWidget {
+class ResidentsPage_v1 extends StatefulWidget {
   @override
   _ResidentsPageState createState() => _ResidentsPageState();
 }
 
-class _ResidentsPageState extends State<ResidentsPage> {
+class _ResidentsPageStatev1 extends State<ResidentsPage> {
   List<Resident> residents = [];
 
   @override
   void initState() {
     super.initState();
-    loadResidents(); // Purana resident.json wala code commented
+    // loadResidents();
+    loadResidentsPage();
   }
 
   /*
@@ -163,7 +178,33 @@ class _ResidentsPageState extends State<ResidentsPage> {
     });
   }
   */
+  int page = 0;
+  final int limit = 10; // Ek time me 20 load
+  bool isLoadingMore = false;
+  bool hasMore = true;
 
+  Future<void> loadResidentsPage() async {
+    if (isLoadingMore || !hasMore) return;
+
+    setState(() => isLoadingMore = true);
+
+    final data = await DatabaseHelper.instance
+        .getResidentsPage(limit, page * limit);
+
+    if (data.isEmpty) {
+      setState(() => hasMore = false);
+    } else {
+      setState(() {
+        residents.addAll(data.map((r) => Resident.fromMap(r)).toList());
+        page++;
+      });
+    }
+
+    setState(() => isLoadingMore = false);
+  }
+
+
+  // Load Residents without Pagination
   Future<void> loadResidents() async {
     final rows = await DatabaseHelper.instance.getAllResidents();
 
@@ -293,7 +334,7 @@ class _ResidentsPageState extends State<ResidentsPage> {
       ),
     );
   }
-
+/*
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -359,8 +400,342 @@ class _ResidentsPageState extends State<ResidentsPage> {
         tooltip: "Add Resident",
       ),
     );
+  }*/
+
+  // Resident List with Pagination
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("Resident List")),
+
+      body: ListView.builder(
+        itemCount: residents.length + (hasMore ? 1 : 0),  // <-- Pagination Loader Line
+        itemBuilder: (context, index) {
+
+          // --- LOAD NEXT PAGE WHEN USER REACHES BOTTOM ---
+          if (index == residents.length) {
+            loadResidentsPage(); // next page auto-load
+
+            return Padding(
+              padding: const EdgeInsets.all(20),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+
+          final r = residents[index];
+
+          return ListTile(
+            leading: CircleAvatar(child: Text(r.flat)),
+            title: Text(r.name),
+            subtitle: Text("Block: ${r.block}\nMobile: ${r.mobile}"),
+            isThreeLine: true,
+
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // EDIT BUTTON
+                IconButton(
+                  icon: Icon(Icons.edit),
+                  onPressed: () => editResident(context, r),
+                ),
+
+                // DELETE BUTTON
+                IconButton(
+                  icon: Icon(Icons.delete, color: Colors.red),
+                  onPressed: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: Text('Delete Resident?'),
+                        content: Text('Are you sure you want to delete ${r.name}?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: Text('Cancel'),
+                          ),
+                          ElevatedButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: Text('Delete'),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (confirm == true) {
+                      await DatabaseHelper.instance.deleteResident(r.id.toString());
+
+                      /// IMPORTANT:
+                      /// Delete ke baad list reset hona chahiye nahi to pagination kharab ho jayega
+                      residents.clear();
+                      page = 0;
+                      hasMore = true;
+
+                      await loadResidentsPage();
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('${r.name} deleted successfully!')),
+                      );
+                    }
+                  },
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => addResident(context),
+        child: Icon(Icons.add),
+        tooltip: "Add Resident",
+      ),
+    );
+  }
+
+}
+
+
+
+class ResidentsPage extends StatefulWidget {
+  @override
+  _ResidentsPageState createState() => _ResidentsPageState();
+}
+
+class _ResidentsPageState extends State<ResidentsPage> {
+  List<Resident> residents = [];
+
+  int page = 0;
+  final int limit = 8; // per page
+  bool isLoadingMore = false;
+  bool hasMore = true;
+
+  @override
+  void initState() {
+    super.initState();
+    loadResidentsPage();
+  }
+
+  Future<void> loadResidentsPage() async {
+    if (isLoadingMore || !hasMore) return;
+
+    setState(() => isLoadingMore = true);
+
+    final result = await DatabaseHelper.instance
+        .getResidentsPage(limit, page * limit);
+
+    if (result.isEmpty) {
+      setState(() {
+        hasMore = false;
+        isLoadingMore = false;
+      });
+      return;
+    }
+
+    setState(() {
+      residents.addAll(result.map((x) => Resident.fromMap(x)).toList());
+      page++;
+      isLoadingMore = false;
+    });
+  }
+
+  Future<void> addResident(BuildContext context) async {
+    final nameController = TextEditingController();
+    final flatController = TextEditingController();
+    final blockController = TextEditingController();
+    final mobileController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text("Add Resident"),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: nameController, decoration: InputDecoration(labelText: "Name")),
+              TextField(controller: flatController, decoration: InputDecoration(labelText: "Flat")),
+              TextField(controller: blockController, decoration: InputDecoration(labelText: "Block")),
+              TextField(controller: mobileController, decoration: InputDecoration(labelText: "Mobile")),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text("Cancel")),
+          ElevatedButton(
+            onPressed: () async {
+              if (nameController.text.isEmpty ||
+                  flatController.text.isEmpty ||
+                  blockController.text.isEmpty ||
+                  mobileController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("Please fill all fields.")),
+                );
+                return;
+              }
+
+              final now = DateTime.now().toIso8601String();
+              final newResident = {
+                "name": nameController.text,
+                "flat": flatController.text,
+                "block": blockController.text,
+                "mobile": mobileController.text,
+                "created_at": now,
+                "updated_at": now,
+              };
+
+              await DatabaseHelper.instance.insertResident(newResident);
+
+              // Reset list for pagination
+              residents.clear();
+              page = 0;
+              hasMore = true;
+              await loadResidentsPage();
+
+              Navigator.pop(ctx);
+            },
+            child: Text("Save"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> editResident(BuildContext context, Resident r) async {
+    final nameController = TextEditingController(text: r.name);
+    final flatController = TextEditingController(text: r.flat);
+    final blockController = TextEditingController(text: r.block);
+    final mobileController = TextEditingController(text: r.mobile);
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text("Edit Resident"),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: TextEditingController(text: r.id.toString()), decoration: InputDecoration(labelText: "ID (cannot be changed)"), readOnly: true),
+              TextField(controller: nameController, decoration: InputDecoration(labelText: "Name")),
+              TextField(controller: flatController, decoration: InputDecoration(labelText: "Flat")),
+              TextField(controller: blockController, decoration: InputDecoration(labelText: "Block")),
+              TextField(controller: mobileController, decoration: InputDecoration(labelText: "Mobile")),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text("Cancel")),
+          ElevatedButton(
+            onPressed: () async {
+              final now = DateTime.now().toIso8601String();
+              final updatedData = {
+                "id": r.id,
+                "name": nameController.text,
+                "flat": flatController.text,
+                "block": blockController.text,
+                "mobile": mobileController.text,
+                "created_at": r.created_at,
+                "updated_at": now,
+              };
+              await DatabaseHelper.instance.updateResident(updatedData);
+
+              residents.clear();
+              page = 0;
+              hasMore = true;
+              await loadResidentsPage();
+
+              Navigator.pop(ctx);
+            },
+            child: Text("Save"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> deleteResident(BuildContext context, Resident r) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete Resident?'),
+        content: Text('Are you sure you want to delete ${r.name}?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Cancel')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Delete')),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await DatabaseHelper.instance.deleteResident(r.id.toString());
+
+      residents.clear();
+      page = 0;
+      hasMore = true;
+      await loadResidentsPage();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${r.name} deleted successfully!')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("Resident List")),
+      body: NotificationListener<ScrollNotification>(
+        onNotification: (scrollInfo) {
+          if (!isLoadingMore &&
+              hasMore &&
+              scrollInfo.metrics.pixels == scrollInfo.metrics.maxScrollExtent) {
+            SchedulerBinding.instance.addPostFrameCallback((_) {
+              loadResidentsPage();
+            });
+          }
+          return false;
+        },
+        child: ListView.builder(
+          itemCount: residents.length + (hasMore ? 1 : 0),
+          itemBuilder: (context, index) {
+            if (index == residents.length) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                loadResidentsPage();
+              });
+              return Padding(
+                padding: const EdgeInsets.all(20),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            final r = residents[index];
+
+            return ListTile(
+              leading: CircleAvatar(child: Text(r.flat)),
+              title: Text(r.name),
+              subtitle: Text("Block: ${r.block}\nMobile: ${r.mobile}"),
+              isThreeLine: true,
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(icon: Icon(Icons.edit), onPressed: () => editResident(context, r)),
+                  IconButton(icon: Icon(Icons.delete, color: Colors.red), onPressed: () => deleteResident(context, r)),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => addResident(context),
+        child: Icon(Icons.add),
+        tooltip: "Add Resident",
+      ),
+    );
   }
 }
+
+
+
 
 
 // Show QR Page with filter
@@ -369,7 +744,7 @@ class ShowQRPage extends StatefulWidget {
   _ShowQRPageState createState() => _ShowQRPageState();
 }
 
-class _ShowQRPageState extends State<ShowQRPage> {
+class _ShowQRPageState_v1 extends State<ShowQRPage> {
   List<Resident> residents = [];
   List<Resident> filtered = [];
   String query = '';
@@ -464,6 +839,145 @@ class _ShowQRPageState extends State<ShowQRPage> {
     );
   }
 }
+
+// Show QR Page with filter (with pagination)
+class _ShowQRPageState extends State<ShowQRPage> {
+  List<Resident> residents = [];
+  List<Resident> filtered = [];
+
+  String query = '';
+
+  int page = 0;
+  final int limit = 8; // per page 8 items
+  bool isLoading = false;
+  bool hasMore = true;
+
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Initial load
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      loadMoreResidents();
+    });
+    _scrollController.addListener(_scrollListener);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollListener() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 100) {
+      // thoda early trigger
+      loadMoreResidents();
+    }
+  }
+
+  Future<void> loadMoreResidents() async {
+    if (isLoading || !hasMore) return;
+
+    setState(() => isLoading = true);
+
+    final rows = await DatabaseHelper.instance
+        .getResidentsPage(limit, page * limit);
+
+    if (rows.isEmpty) {
+      setState(() => hasMore = false);
+    } else {
+      final newList = rows.map((data) => Resident.fromMap(data)).toList();
+
+      setState(() {
+        residents.addAll(newList);
+        filtered = residents;
+        page++;
+      });
+    }
+
+    setState(() => isLoading = false);
+  }
+
+  void filterResidents(String q) {
+    setState(() {
+      query = q;
+      filtered = residents.where((r) {
+        final nameLower = r.name.toLowerCase();
+        final flatLower = r.flat.toLowerCase();
+        final qLower = q.toLowerCase();
+        return nameLower.contains(qLower) || flatLower.contains(qLower);
+      }).toList();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("Show QR")),
+      body: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          children: [
+            TextField(
+              decoration: InputDecoration(
+                labelText: "Search by Name or Flat",
+                border: OutlineInputBorder(),
+              ),
+              onChanged: filterResidents,
+            ),
+            SizedBox(height: 16),
+            Expanded(
+              child: filtered.isEmpty
+                  ? Center(child: Text("No residents found"))
+                  : ListView.builder(
+                controller: _scrollController,
+                itemCount: filtered.length + (hasMore ? 1 : 0),
+                itemBuilder: (context, index) {
+                  if (index == filtered.length) {
+                    return Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(12),
+                        child: CircularProgressIndicator(),
+                      ),
+                    );
+                  }
+
+                  final r = filtered[index];
+
+                  return Card(
+                    margin: EdgeInsets.symmetric(vertical: 6),
+                    child: ListTile(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => FullScreenQR(resident: r),
+                          ),
+                        );
+                      },
+                      leading: QrImageView(
+                        data: r.id.toString(),
+                        version: QrVersions.auto,
+                        size: 60,
+                      ),
+                      title: Text(r.name),
+                      subtitle: Text("Flat: ${r.flat} | Block: ${r.block}"),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
 
 class FullScreenQR extends StatelessWidget {
   final Resident resident;
