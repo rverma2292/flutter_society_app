@@ -1,8 +1,8 @@
 class Resident {
   final int? id;
   final String name;
-  final String flat;
-  final String block;
+  final String house_num;
+  final String resident_type;
   final String mobile;
   final String? created_at; // इसे nullable बनाएं
   final String? updated_at; // इसे nullable बनाएं
@@ -10,8 +10,8 @@ class Resident {
   Resident({
     this.id,
     required this.name,
-    required this.flat,
-    required this.block,
+    required this.house_num,
+    required this.resident_type,
     required this.mobile,
     this.created_at, // इसे अब required नहीं है
     this.updated_at, // इसे अब required नहीं है
@@ -24,8 +24,8 @@ class Resident {
     return {
       'id': id,
       'name': name,
-      'flat': flat,
-      'block': block,
+      'house_num': house_num,
+      'resident_type': resident_type,
       'mobile': mobile,
       // यदि created_at null है (नया रिकॉर्ड), तो वर्तमान समय सेट करें, अन्यथा मौजूदा मान का उपयोग करें
       'created_at': created_at ?? now,
@@ -38,11 +38,10 @@ class Resident {
     return Resident(
       id: map['id'],
       name: map['name'] ?? '',
-      flat: map['flat'] ?? '',
-      block: map['block'] ?? '',
+      house_num: map['house_num'] ?? '',
+      resident_type: map['resident_type'] ?? '',
       mobile: map['mobile'] ?? '',
       created_at: map['created_at'],
-      // ये पहले से ही nullable हैं, इसलिए ?? '' की आवश्यकता नहीं है
       updated_at: map['updated_at'],
     );
   }
@@ -51,10 +50,10 @@ class Resident {
   CREATE TABLE residents (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-    flat TEXT NOT NULL,
-    block TEXT NOT NULL,
+    house_num TEXT NOT NULL,
+    resident_type TEXT NOT NULL,
     mobile TEXT NOT NULL UNIQUE,
-    -- CURRENT_TIMESTAMP को डिफ़ॉल्ट मान के रूप में सेट करें
+    -- CURRENT_TIMESTAMP
     created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%fZ', 'now')),
     updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%fZ', 'now'))
   )

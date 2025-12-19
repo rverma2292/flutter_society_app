@@ -19,14 +19,14 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE residents (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT,
-            flat TEXT,
-            block TEXT,
+            house_num TEXT,
+            resident_type TEXT,
             mobile TEXT,
             created_at TEXT,
             updated_at TEXT
@@ -57,7 +57,7 @@ class DatabaseHelper {
     print("QUERY: limit=$limit offset=$offset");
 
     final result = await db.rawQuery(
-        'SELECT id, name, flat, block, mobile, created_at, updated_at FROM residents ORDER BY id DESC LIMIT $limit OFFSET $offset'
+        'SELECT id, name, house_num, resident_type, mobile, created_at, updated_at FROM residents ORDER BY id DESC LIMIT $limit OFFSET $offset'
     );
 
     print("RESULT COUNT = ${result.length}");
@@ -94,26 +94,26 @@ class DatabaseHelper {
     final db = await database; // get your database instance
 
     final List<Map<String, dynamic>> seedData = [
-      {"name": "Rahul Ranjan", "flat": "101", "block": "A", "mobile": "9876543210", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Priya Singh", "flat": "102", "block": "A", "mobile": "9876543211", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Amit Kumar", "flat": "103", "block": "A", "mobile": "9876543212", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Sneha Sharma", "flat": "104", "block": "A", "mobile": "9876543213", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Vikas Patel", "flat": "105", "block": "B", "mobile": "9876543214", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Neha Verma", "flat": "106", "block": "B", "mobile": "9876543215", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Rohit Singh", "flat": "107", "block": "B", "mobile": "9876543216", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Anjali Gupta", "flat": "108", "block": "B", "mobile": "9876543217", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Sanjay Mehta", "flat": "109", "block": "C", "mobile": "9876543218", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Pooja Jain", "flat": "110", "block": "C", "mobile": "9876543219", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Karan Sharma", "flat": "111", "block": "C", "mobile": "9876543220", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Tanya Roy", "flat": "112", "block": "C", "mobile": "9876543221", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Manish Agarwal", "flat": "113", "block": "D", "mobile": "9876543222", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Ritika Sinha", "flat": "114", "block": "D", "mobile": "9876543223", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Ajay Singh", "flat": "115", "block": "D", "mobile": "9876543224", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Shreya Nair", "flat": "116", "block": "D", "mobile": "9876543225", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Vivek Joshi", "flat": "117", "block": "E", "mobile": "9876543226", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Anita Desai", "flat": "118", "block": "E", "mobile": "9876543227", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Ramesh Kumar", "flat": "119", "block": "E", "mobile": "9876543228", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Priyanka Malhotra", "flat": "120", "block": "E", "mobile": "9876543229", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
+      {"name": "Rahul Ranjan", "house_num": "101", "resident_type": "A", "mobile": "9876543210", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
+      {"name": "Priya Singh", "house_num": "102", "resident_type": "A", "mobile": "9876543211", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
+      {"name": "Amit Kumar", "house_num": "103", "resident_type": "A", "mobile": "9876543212", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
+      {"name": "Sneha Sharma", "house_num": "104", "resident_type": "A", "mobile": "9876543213", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
+      {"name": "Vikas Patel", "house_num": "105", "resident_type": "B", "mobile": "9876543214", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
+      {"name": "Neha Verma", "house_num": "106", "resident_type": "B", "mobile": "9876543215", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
+      {"name": "Rohit Singh", "house_num": "107", "resident_type": "B", "mobile": "9876543216", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
+      {"name": "Anjali Gupta", "house_num": "108", "resident_type": "B", "mobile": "9876543217", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
+      {"name": "Sanjay Mehta", "house_num": "109", "resident_type": "C", "mobile": "9876543218", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
+      {"name": "Pooja Jain", "house_num": "110", "resident_type": "C", "mobile": "9876543219", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
+      {"name": "Karan Sharma", "house_num": "111", "resident_type": "C", "mobile": "9876543220", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
+      {"name": "Tanya Roy", "house_num": "112", "resident_type": "C", "mobile": "9876543221", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
+      {"name": "Manish Agarwal", "house_num": "113", "resident_type": "D", "mobile": "9876543222", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
+      {"name": "Ritika Sinha", "house_num": "114", "resident_type": "D", "mobile": "9876543223", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
+      {"name": "Ajay Singh", "house_num": "115", "resident_type": "D", "mobile": "9876543224", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
+      {"name": "Shreya Nair", "house_num": "116", "resident_type": "D", "mobile": "9876543225", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
+      {"name": "Vivek Joshi", "house_num": "117", "resident_type": "E", "mobile": "9876543226", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
+      {"name": "Anita Desai", "house_num": "118", "resident_type": "E", "mobile": "9876543227", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
+      {"name": "Ramesh Kumar", "house_num": "119", "resident_type": "E", "mobile": "9876543228", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
+      {"name": "Priyanka Malhotra", "house_num": "120", "resident_type": "E", "mobile": "9876543229", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
     ];
 
     for (var r in seedData) {

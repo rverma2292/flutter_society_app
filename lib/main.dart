@@ -44,15 +44,15 @@ class MyApp extends StatelessWidget {
 class Resident {
   final String id;
   final String name;
-  final String flat;
-  final String block;
+  final String house_num;
+  final String resident_type;
   final String mobile;
 
   Resident({
     required this.id,
     required this.name,
-    required this.flat,
-    required this.block,
+    required this.house_num,
+    required this.resident_type,
     required this.mobile,
   });
 
@@ -60,8 +60,8 @@ class Resident {
     return Resident(
       id: json['id'],
       name: json['name'],
-      flat: json['flat'],
-      block: json['block'],
+      house_num: json['house_num'],
+      resident_type: json['resident_type'],
       mobile: json['mobile'],
     );
   }
@@ -231,8 +231,8 @@ class _ResidentsPageStatev1 extends State<ResidentsPage> {
             children: [
               // ID फ़ील्ड हटा दिया गया है, क्योंकि SQL इसे स्वचालित रूप से उत्पन्न करता है
               TextField(controller: nameController, decoration: InputDecoration(labelText: "Name")),
-              TextField(controller: flatController, decoration: InputDecoration(labelText: "Flat")),
-              TextField(controller: blockController, decoration: InputDecoration(labelText: "Block")),
+              TextField(controller: flatController, decoration: InputDecoration(labelText: "House Number")),
+              TextField(controller: blockController, decoration: InputDecoration(labelText: "Type")),
               TextField(controller: mobileController, decoration: InputDecoration(labelText: "Mobile")),
             ],
           ),
@@ -260,8 +260,8 @@ class _ResidentsPageStatev1 extends State<ResidentsPage> {
               // सुनिश्चित करें कि कॉलम नाम ('created_at') आपके DatabaseHelper से मेल खाते हैं
               final newResident = {
                 "name": nameController.text,
-                "flat": flatController.text,
-                "block": blockController.text,
+                "house_num": flatController.text,
+                "resident_type": blockController.text,
                 "mobile": mobileController.text,
                 "created_at": now,
                 "updated_at": now,
@@ -282,8 +282,8 @@ class _ResidentsPageStatev1 extends State<ResidentsPage> {
   // ----------------- Edit Resident Dialog -----------------
   Future<void> editResident(BuildContext context, Resident resident) async {
     final nameController = TextEditingController(text: resident.name);
-    final flatController = TextEditingController(text: resident.flat);
-    final blockController = TextEditingController(text: resident.block);
+    final flatController = TextEditingController(text: resident.house_num);
+    final blockController = TextEditingController(text: resident.resident_type);
     final mobileController = TextEditingController(text: resident.mobile);
     await showDialog(
       context: context,
@@ -299,8 +299,8 @@ class _ResidentsPageStatev1 extends State<ResidentsPage> {
                 readOnly: true,
               ),
               TextField(controller: nameController, decoration: InputDecoration(labelText: "Name")),
-              TextField(controller: flatController, decoration: InputDecoration(labelText: "Flat")),
-              TextField(controller: blockController, decoration: InputDecoration(labelText: "Block")),
+              TextField(controller: flatController, decoration: InputDecoration(labelText: "House Number")),
+              TextField(controller: blockController, decoration: InputDecoration(labelText: "Type")),
               TextField(controller: mobileController, decoration: InputDecoration(labelText: "Mobile")),
             ],
           ),
@@ -317,8 +317,8 @@ class _ResidentsPageStatev1 extends State<ResidentsPage> {
               final updatedData = {
                 "id": resident.id,
                 "name": nameController.text,
-                "flat": flatController.text,
-                "block": blockController.text,
+                "house_num": flatController.text,
+                "resident_type": blockController.text,
                 "mobile": mobileController.text,
                 "created_at": resident.created_at,
                 "updated_at": now,
@@ -347,9 +347,9 @@ class _ResidentsPageStatev1 extends State<ResidentsPage> {
         itemBuilder: (context, index) {
           final r = residents[index];
           return ListTile(
-            leading: CircleAvatar(child: Text(r.flat)),
+            leading: CircleAvatar(child: Text(r.house_num)),
             title: Text(r.name),
-            subtitle: Text("Block: ${r.block}\nMobile: ${r.mobile}"),
+            subtitle: Text("Type: ${r.resident_type}\nMobile: ${r.mobile}"),
             isThreeLine: true,
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
@@ -425,9 +425,9 @@ class _ResidentsPageStatev1 extends State<ResidentsPage> {
           final r = residents[index];
 
           return ListTile(
-            leading: CircleAvatar(child: Text(r.flat)),
+            leading: CircleAvatar(child: Text(r.house_num)),
             title: Text(r.name),
-            subtitle: Text("Block: ${r.block}\nMobile: ${r.mobile}"),
+            subtitle: Text("Type: ${r.resident_type}\nMobile: ${r.mobile}"),
             isThreeLine: true,
 
             trailing: Row(
@@ -553,8 +553,8 @@ class _ResidentsPageState extends State<ResidentsPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(controller: nameController, decoration: InputDecoration(labelText: "Name")),
-              TextField(controller: flatController, decoration: InputDecoration(labelText: "Flat")),
-              TextField(controller: blockController, decoration: InputDecoration(labelText: "Block")),
+              TextField(controller: flatController, decoration: InputDecoration(labelText: "House Number")),
+              TextField(controller: blockController, decoration: InputDecoration(labelText: "Type")),
               TextField(controller: mobileController, decoration: InputDecoration(labelText: "Mobile")),
             ],
           ),
@@ -576,8 +576,8 @@ class _ResidentsPageState extends State<ResidentsPage> {
               final now = DateTime.now().toIso8601String();
               final newResident = {
                 "name": nameController.text,
-                "flat": flatController.text,
-                "block": blockController.text,
+                "house_num": flatController.text,
+                "resident_type": blockController.text,
                 "mobile": mobileController.text,
                 "created_at": now,
                 "updated_at": now,
@@ -602,8 +602,8 @@ class _ResidentsPageState extends State<ResidentsPage> {
 
   Future<void> editResident(BuildContext context, Resident r) async {
     final nameController = TextEditingController(text: r.name);
-    final flatController = TextEditingController(text: r.flat);
-    final blockController = TextEditingController(text: r.block);
+    final flatController = TextEditingController(text: r.house_num);
+    final blockController = TextEditingController(text: r.resident_type);
     final mobileController = TextEditingController(text: r.mobile);
 
     await showDialog(
@@ -616,8 +616,8 @@ class _ResidentsPageState extends State<ResidentsPage> {
             children: [
               TextField(controller: TextEditingController(text: r.id.toString()), decoration: InputDecoration(labelText: "ID (cannot be changed)"), readOnly: true),
               TextField(controller: nameController, decoration: InputDecoration(labelText: "Name")),
-              TextField(controller: flatController, decoration: InputDecoration(labelText: "Flat")),
-              TextField(controller: blockController, decoration: InputDecoration(labelText: "Block")),
+              TextField(controller: flatController, decoration: InputDecoration(labelText: "House Number")),
+              TextField(controller: blockController, decoration: InputDecoration(labelText: "Type")),
               TextField(controller: mobileController, decoration: InputDecoration(labelText: "Mobile")),
             ],
           ),
@@ -630,8 +630,8 @@ class _ResidentsPageState extends State<ResidentsPage> {
               final updatedData = {
                 "id": r.id,
                 "name": nameController.text,
-                "flat": flatController.text,
-                "block": blockController.text,
+                "house_num": flatController.text,
+                "resident_type": blockController.text,
                 "mobile": mobileController.text,
                 "created_at": r.created_at,
                 "updated_at": now,
@@ -710,9 +710,9 @@ class _ResidentsPageState extends State<ResidentsPage> {
             final r = residents[index];
 
             return ListTile(
-              leading: CircleAvatar(child: Text(r.flat)),
+              leading: CircleAvatar(child: Text(r.house_num)),
               title: Text(r.name),
-              subtitle: Text("Block: ${r.block}\nMobile: ${r.mobile}"),
+              subtitle: Text("Type: ${r.resident_type}\nMobile: ${r.mobile}"),
               isThreeLine: true,
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -780,7 +780,7 @@ class _ShowQRPageState_v1 extends State<ShowQRPage> {
       query = q;
       filtered = residents.where((r) {
         final nameLower = r.name.toLowerCase();
-        final flatLower = r.flat.toLowerCase();
+        final flatLower = r.house_num.toLowerCase();
         final qLower = q.toLowerCase();
         return nameLower.contains(qLower) || flatLower.contains(qLower);
       }).toList();
@@ -797,7 +797,7 @@ class _ShowQRPageState_v1 extends State<ShowQRPage> {
           children: [
             TextField(
               decoration: InputDecoration(
-                labelText: "Search by Name or Flat",
+                labelText: "Search by Name or House Number",
                 border: OutlineInputBorder(),
               ),
               onChanged: filterResidents,
@@ -827,7 +827,7 @@ class _ShowQRPageState_v1 extends State<ShowQRPage> {
                         size: 60,
                       ),
                       title: Text(r.name),
-                      subtitle: Text("Flat: ${r.flat} | Block: ${r.block}"),
+                      subtitle: Text("House Number: ${r.house_num} | Type: ${r.resident_type}"),
                     ),
                   );
                 },
@@ -906,7 +906,7 @@ class _ShowQRPageState extends State<ShowQRPage> {
       query = q;
       filtered = residents.where((r) {
         final nameLower = r.name.toLowerCase();
-        final flatLower = r.flat.toLowerCase();
+        final flatLower = r.house_num.toLowerCase();
         final qLower = q.toLowerCase();
         return nameLower.contains(qLower) || flatLower.contains(qLower);
       }).toList();
@@ -923,7 +923,7 @@ class _ShowQRPageState extends State<ShowQRPage> {
           children: [
             TextField(
               decoration: InputDecoration(
-                labelText: "Search by Name or Flat",
+                labelText: "Search by Name or House Number",
                 border: OutlineInputBorder(),
               ),
               onChanged: filterResidents,
@@ -964,7 +964,7 @@ class _ShowQRPageState extends State<ShowQRPage> {
                         size: 60,
                       ),
                       title: Text(r.name),
-                      subtitle: Text("Flat: ${r.flat} | Block: ${r.block}"),
+                      subtitle: Text("House Number: ${r.house_num} | Type: ${r.resident_type}"),
                     ),
                   );
                 },
@@ -1078,7 +1078,7 @@ class FullScreenQR extends StatelessWidget {
               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             Text(
-              "Flat: ${resident.flat} | Block: ${resident.block}",
+              "House Number: ${resident.house_num} | Type: ${resident.resident_type}",
               style: const TextStyle(fontSize: 18),
             ),
           ],
@@ -1257,11 +1257,11 @@ class _ScanQRPageState extends State<ScanQRPage> {
                     style: const TextStyle(color: Colors.white, fontSize: 16),
                   ),
                   Text(
-                    "Flat: ${scannedResident!['flat']}",
+                    "House Number: ${scannedResident!['house_num']}",
                     style: const TextStyle(color: Colors.white, fontSize: 16),
                   ),
                   Text(
-                    "Block: ${scannedResident!['block']}",
+                    "Type: ${scannedResident!['resident_type']}",
                     style: const TextStyle(color: Colors.white, fontSize: 16),
                   ),
                 ],
