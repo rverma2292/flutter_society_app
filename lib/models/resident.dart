@@ -4,8 +4,8 @@ class Resident {
   final String house_num;
   final String resident_type;
   final String mobile;
-  final String? created_at; // इसे nullable बनाएं
-  final String? updated_at; // इसे nullable बनाएं
+  final String? created_at; //nullable
+  final String? updated_at; //nullable
 
   Resident({
     this.id,
@@ -13,12 +13,12 @@ class Resident {
     required this.house_num,
     required this.resident_type,
     required this.mobile,
-    this.created_at, // इसे अब required नहीं है
-    this.updated_at, // इसे अब required नहीं है
+    this.created_at,
+    this.updated_at,
   });
 
   Map<String, dynamic> toMap() {
-    // वर्तमान समय को ISO 8601 स्ट्रिंग फॉर्मेट में प्राप्त करें
+
     final String now = DateTime.now().toIso8601String();
 
     return {
@@ -27,9 +27,7 @@ class Resident {
       'house_num': house_num,
       'resident_type': resident_type,
       'mobile': mobile,
-      // यदि created_at null है (नया रिकॉर्ड), तो वर्तमान समय सेट करें, अन्यथा मौजूदा मान का उपयोग करें
       'created_at': created_at ?? now,
-      // हमेशा वर्तमान समय के साथ updated_at को अपडेट करें
       'updated_at': now,
     };
   }

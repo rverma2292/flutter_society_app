@@ -1,13 +1,10 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
 // qr import
 import 'package:qr_flutter/qr_flutter.dart';
 // share import
 import 'package:share_plus/share_plus.dart';
 import 'dart:typed_data';
 import 'dart:ui';
-import 'package:flutter/rendering.dart';
 // path provide to use in share
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
@@ -15,11 +12,10 @@ import 'dart:io';
 import 'package:mobile_scanner/mobile_scanner.dart';
 // image picker added
 import 'package:image_picker/image_picker.dart';
-import 'package:hive/hive.dart'; // to save data with hive
-import 'package:hive_flutter/hive_flutter.dart';
-import 'resident.dart'; // Resident model import karo
-import 'database_helper.dart';
+import 'models/resident.dart'; // Resident model import karo
+import 'database/database_helper.dart';
 import 'package:flutter/scheduler.dart';
+import 'app.dart';
 
 
 
@@ -27,7 +23,7 @@ import 'package:flutter/scheduler.dart';
 void main() async {
   runApp(MyApp());
 }
-
+/*
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -38,7 +34,7 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-
+*/
 /*
 // Old Resident model
 class Resident {
@@ -67,7 +63,7 @@ class Resident {
   }
 }
 */
-
+/*
 // Initial Page with buttons
 class MenuPage extends StatelessWidget {
   @override
@@ -229,7 +225,6 @@ class _ResidentsPageStatev1 extends State<ResidentsPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // ID फ़ील्ड हटा दिया गया है, क्योंकि SQL इसे स्वचालित रूप से उत्पन्न करता है
               TextField(controller: nameController, decoration: InputDecoration(labelText: "Name")),
               TextField(controller: flatController, decoration: InputDecoration(labelText: "House Number")),
               TextField(controller: blockController, decoration: InputDecoration(labelText: "Type")),
@@ -244,7 +239,6 @@ class _ResidentsPageStatev1 extends State<ResidentsPage> {
           ),
           ElevatedButton(
             onPressed: () async {
-              // यह सुनिश्चित करने के लिए जांचें कि कोई भी फ़ील्ड खाली न हो
               if (nameController.text.isEmpty ||
                   flatController.text.isEmpty ||
                   blockController.text.isEmpty ||
@@ -257,7 +251,6 @@ class _ResidentsPageStatev1 extends State<ResidentsPage> {
 
               final now = DateTime.now().toIso8601String();
 
-              // सुनिश्चित करें कि कॉलम नाम ('created_at') आपके DatabaseHelper से मेल खाते हैं
               final newResident = {
                 "name": nameController.text,
                 "house_num": flatController.text,
@@ -268,7 +261,7 @@ class _ResidentsPageStatev1 extends State<ResidentsPage> {
               };
 
               await DatabaseHelper.instance.insertResident(newResident);
-              await loadResidents(); // सूची को रीफ़्रेश करें
+              await loadResidents();
               Navigator.pop(ctx);
             },
             child: Text("Save"),
@@ -465,7 +458,7 @@ class _ResidentsPageStatev1 extends State<ResidentsPage> {
                       await DatabaseHelper.instance.deleteResident(r.id.toString());
 
                       /// IMPORTANT:
-                      /// Delete ke baad list reset hona chahiye nahi to pagination kharab ho jayega
+                      /// Delete and reset list
                       residents.clear();
                       page = 0;
                       hasMore = true;
@@ -734,10 +727,6 @@ class _ResidentsPageState extends State<ResidentsPage> {
   }
 }
 
-
-
-
-
 // Show QR Page with filter
 class ShowQRPage extends StatefulWidget {
   @override
@@ -873,7 +862,7 @@ class _ShowQRPageState extends State<ShowQRPage> {
   void _scrollListener() {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 100) {
-      // thoda early trigger
+      // bit early trigger
       loadMoreResidents();
     }
   }
@@ -1273,3 +1262,4 @@ class _ScanQRPageState extends State<ScanQRPage> {
     );
   }
 }
+*/
