@@ -151,4 +151,20 @@ class DatabaseHelper {
       await db.insert('residents', r);
     }
   }
+
+  // Ab ye List<Map> lega, jo optimized hai
+  Future<void> importResidents(List<Map<String, dynamic>> residents) async {
+    final db = await database;
+    Batch batch = db.batch();
+
+    for (var resident in residents) {
+      batch.insert(
+        'residents',
+        resident,
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+
+    await batch.commit(noResult: true);
+  }
 }

@@ -32,6 +32,17 @@ class Resident {
     };
   }
 
+  Resident copyWith({int? id, String? name, String? house_num, String? resident_type, String? mobile}) {
+    return Resident(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      house_num: house_num ?? this.house_num,
+      resident_type: resident_type ?? this.resident_type,
+      mobile: mobile ?? this.mobile,
+    );
+  }
+
+
   factory Resident.fromMap(Map<String, dynamic> map) {
     return Resident(
       id: map['id'],

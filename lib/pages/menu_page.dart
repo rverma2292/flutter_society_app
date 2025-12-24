@@ -7,6 +7,12 @@ import 'show_qr_page.dart';
 import 'scan_qr_page.dart';
 import 'gate_entry_form_page.dart';
 import 'gate_entry_list_page.dart';
+import 'dart:io';
+import 'dart:convert';
+import 'package:file_picker/file_picker.dart';
+import 'package:csv/csv.dart';
+import '../models/resident.dart';
+
 
 class MenuPage extends StatelessWidget {
   const MenuPage({super.key});
@@ -83,6 +89,61 @@ class MenuPage extends StatelessWidget {
                     content: Text("Residents seeded successfully!"),
                   ),
                 );
+              },
+            ),
+            MenuButton(
+              title: "Import Residents (CSV)",
+              color: Colors.indigo,
+              onTap: () async {
+                try {
+                  FilePickerResult? result = await FilePicker.platform.pickFiles(
+                    type: FileType.custom,
+                    allowedExtensions: ['csv'],
+                  );
+
+                  if (result != null && result.files.single.path != null) {
+                    File file = File(result.files.single.path!);
+
+                    final input = file.openRead();
+                    final fields = await input
+                        .transform(utf8.decoder)
+                        .transform(const CsvToListConverter())
+                        .toList();
+
+                    if (fields.isEmpty) return;
+
+                    // Hum yahan direct List of Maps bana rahe hain
+                    List<Map<String, dynamic>> residentsData = [];
+                    String now = DateTime.now().toIso8601String();
+
+                    for (int i = 1; i < fields.length; i++) {
+                      final row = fields[i];
+                      if (row.length < 4) continue;
+
+                      residentsData.add({
+                        "name": row[0].toString(),
+                        "house_num": row[1].toString(),
+                        "resident_type": row[2].toString(),
+                        "mobile": row[3].toString(),
+                        "created_at": now,
+                        "updated_at": now,
+                      });
+                    }
+
+                    // DatabaseHelper ko Map ki list pass karein
+                    await DatabaseHelper.instance.importResidents(residentsData);
+
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("${residentsData.length} Residents imported!")),
+                    );
+                  }
+                } catch (e) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+                  );
+                }
               },
             ),
           ],
