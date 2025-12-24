@@ -46,8 +46,8 @@ class GateEntry {
       'exit_time': exitTime,
       'qr_code': qrCode,
       'remarks': remarks,
-      'created_at': createdAt,
-      'updated_at': updatedAt,
+      'created_at': createdAt ?? DateTime.now().toIso8601String(),
+      'updated_at': updatedAt ?? DateTime.now().toIso8601String(),
     };
   }
 
