@@ -6,6 +6,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:image_picker/image_picker.dart';
 import '../database/database_helper.dart';
 import 'resident_detail_page.dart';
+import 'resident_not_found_page.dart';
 
 class ScanQRPage extends StatefulWidget {
   const ScanQRPage({super.key});
@@ -82,11 +83,14 @@ class _ScanQRPageState extends State<ScanQRPage> {
 
   /// ---------- PROCESS SCAN (DIRECT SQL) ----------
   void processScan(Barcode barcode) async {
-    // 1. Lock the scanner so it doesn't fire multiple times
+    // 1. Lock the scanner so it doesn't fire 10 times a second
     if (isProcessing) return;
-    setState(() => isProcessing = true);
 
-    // 2. Clean the scanned value
+    setState(() {
+      isProcessing = true;
+    });
+
+    // 2. Clean the scanned value (remove whitespaces/newlines)
     final scannedValue = (barcode.rawValue ?? "")
         .trim()
         .replaceAll(RegExp(r'[\n\r]'), '')
@@ -98,7 +102,7 @@ class _ScanQRPageState extends State<ScanQRPage> {
     }
 
     try {
-      // 3. Query the database
+      // 3. Query the live database for this specific UUID
       final db = await DatabaseHelper.instance.database;
       final List<Map<String, dynamic>> results = await db.query(
         'residents',
@@ -108,39 +112,48 @@ class _ScanQRPageState extends State<ScanQRPage> {
       );
 
       if (mounted) {
-        if (results.isNotEmpty) {
-          // A. STOP CAMERA to save battery and prevent background scans
-          controller.stop();
+        // 4. STOP the camera before navigating to save battery and prevent "ghost" scans
+        controller.stop();
 
-          // B. NAVIGATE to the new separate page
+        if (results.isNotEmpty) {
+          // CASE A: RESIDENT FOUND
+          print("✅ SQL Match Found: ${results.first['name']}");
+
           await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => ResidentDetailsPage(resident: results.first),
             ),
           );
-
-          // C. RESUME once the user returns
-          setState(() {
-            scannedCode = null;
-            scannedResident = null;
-            isProcessing = false;
-          });
-          controller.start();
         } else {
-          // No match found - update UI to show error
-          setState(() {
-            scannedCode = barcode;
-            scannedResident = null;
-            isProcessing = false;
-          });
+          // CASE B: RESIDENT NOT FOUND
+          print("❌ SQL No Match for: $scannedValue");
+
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ResidentNotFoundPage(scannedUuid: scannedValue),
+            ),
+          );
         }
+
+        // 5. RESUME: When the user comes back from either page, reset and start camera
+        setState(() {
+          scannedCode = null;
+          scannedResident = null;
+          isProcessing = false;
+        });
+        controller.start();
       }
     } catch (e) {
-      debugPrint("Error during SQL scan: $e");
-      if (mounted) setState(() => isProcessing = false);
+      debugPrint("Error during scan: $e");
+      if (mounted) {
+        setState(() => isProcessing = false);
+        controller.start();
+      }
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
