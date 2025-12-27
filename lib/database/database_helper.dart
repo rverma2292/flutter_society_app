@@ -167,4 +167,13 @@ class DatabaseHelper {
 
     await batch.commit(noResult: true);
   }
+
+  // inside lib/database/database_helper.dart
+  Future<int> getTotalResidentsCount() async {
+    final db = await instance.database;
+    // sqflite provides firstIntValue to easily parse COUNT results
+    final result = await db.rawQuery('SELECT COUNT(*) FROM residents');
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
 }

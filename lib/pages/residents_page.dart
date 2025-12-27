@@ -13,6 +13,7 @@ class _ResidentsPageState extends State<ResidentsPage> {
   List<Resident> residents = [];
 
   int page = 0;
+  int totalCount = 0;
   final int limit = 8; // per page
   bool isLoadingMore = false;
   bool hasMore = true;
@@ -28,11 +29,13 @@ class _ResidentsPageState extends State<ResidentsPage> {
 
     setState(() => isLoadingMore = true);
 
+    final count = await DatabaseHelper.instance.getTotalResidentsCount();
     final result = await DatabaseHelper.instance
         .getResidentsPage(limit, page * limit);
 
-    if (result.isEmpty) {
+    if (result.isEmpty  && page == 0) {
       setState(() {
+        totalCount = 0;
         hasMore = false;
         isLoadingMore = false;
       });
@@ -40,8 +43,11 @@ class _ResidentsPageState extends State<ResidentsPage> {
     }
 
     setState(() {
+      totalCount = count;
       residents.addAll(result.map((x) => Resident.fromMap(x)).toList());
       page++;
+      isLoadingMore = result.length < limit ? false : isLoadingMore;
+      hasMore = result.length >= limit;
       isLoadingMore = false;
     });
   }
@@ -223,7 +229,7 @@ class _ResidentsPageState extends State<ResidentsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Resident List")),
+      appBar: AppBar(title: Text("Resident List ($totalCount)")),
       body: NotificationListener<ScrollNotification>(
         onNotification: (scrollInfo) {
           if (!isLoadingMore &&
