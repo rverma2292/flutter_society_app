@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:uuid/uuid.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._internal();
@@ -19,7 +20,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: (db, version) async {
         await _createResidentsTable(db);
         await _createGateEntriesTable(db);
@@ -27,6 +28,9 @@ class DatabaseHelper {
       onUpgrade: (db, oldVersion, newVersion) async {
         if(oldVersion < 4){
           await _createGateEntriesTable(db);
+        }
+        if(oldVersion < 5){
+          await _updateResidentsTable(db);
         }
       },
     );
@@ -36,6 +40,7 @@ class DatabaseHelper {
     await db.execute('''
           CREATE TABLE residents (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            uuid TEXT, -- ADDED FOR fresh installs
             name TEXT,
             house_num TEXT,
             resident_type TEXT,
@@ -44,6 +49,31 @@ class DatabaseHelper {
             updated_at TEXT
           )
         ''');
+  }
+
+  Future<void> _updateResidentsTable(Database db) async {
+    // Use try-catch or check if column exists to prevent "duplicate column" crashes
+    try {
+      await db.execute('ALTER TABLE residents ADD COLUMN uuid TEXT');
+    } catch (e) {
+      print("Column uuid might already exist: $e");
+    }
+
+    // Backfill existing rows with UUIDs
+    List<Map<String, dynamic>> results = await db.query('residents');
+    for (var row in results) {
+      // If uuid is null or empty string, generate one
+      if (row['uuid'] == null || row['uuid'].toString().isEmpty) {
+        String newUuid = const Uuid().v4();
+        await db.update(
+          'residents',
+          {'uuid': newUuid},
+          where: 'id = ?',
+          whereArgs: [row['id']],
+        );
+      }
+    }
+    print("Migration complete: UUIDs generated for existing records.");
   }
 
   Future<void> _createGateEntriesTable(Database db)async {
@@ -88,7 +118,7 @@ class DatabaseHelper {
     print("QUERY: limit=$limit offset=$offset");
 
     final result = await db.rawQuery(
-        'SELECT id, name, house_num, resident_type, mobile, created_at, updated_at FROM residents ORDER BY id DESC LIMIT $limit OFFSET $offset'
+        'SELECT id, uuid, name, house_num, resident_type, mobile, created_at, updated_at FROM residents ORDER BY id DESC LIMIT $limit OFFSET $offset'
     );
 
     print("RESULT COUNT = ${result.length}");

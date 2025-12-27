@@ -128,9 +128,12 @@ Widget build(BuildContext context) {
                       );
                     },
                     leading: QrImageView(
-                      data: r.id.toString(),
+                      data: r.uuid,
                       version: QrVersions.auto,
                       size: 60,
+                      // Adding gapless and error correction makes scanning more reliable
+                      gapless: true,
+                      errorCorrectionLevel: QrErrorCorrectLevel.M,
                     ),
                     title: Text(r.name),
                     subtitle: Text(

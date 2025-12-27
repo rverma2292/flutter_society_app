@@ -43,7 +43,7 @@ dependencies:
   path: ^1.9.1
   csv: ^6.0.0
   file_picker: ^10.3.8
-
+  uuid: ^4.5.2
 
 
 

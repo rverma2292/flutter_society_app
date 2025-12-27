@@ -101,16 +101,17 @@ class _ResidentsPageState extends State<ResidentsPage> {
                 }
 
                 final now = DateTime.now().toIso8601String();
-                final newResident = {
-                  "name": nameController.text,
-                  "house_num": flatController.text,
-                  "resident_type": selectedType, // variable use karein
-                  "mobile": mobileController.text,
-                  "created_at": now,
-                  "updated_at": now,
-                };
+                // TO THIS:
+                final newResident = Resident(
+                  name: nameController.text,
+                  house_num: flatController.text,
+                  resident_type: selectedType,
+                  mobile: mobileController.text,
+                );
 
-                await DatabaseHelper.instance.insertResident(newResident);
+                // toMap() will now automatically include the generated UUID
+                await DatabaseHelper.instance.insertResident(newResident.toMap());
+
                 residents.clear();
                 page = 0;
                 hasMore = true;
@@ -171,17 +172,16 @@ class _ResidentsPageState extends State<ResidentsPage> {
           ElevatedButton(
             onPressed: () async {
               final now = DateTime.now().toIso8601String();
-              final updatedData = {
-                "id": r.id,
-                "name": nameController.text,
-                "house_num": flatController.text,
-                "resident_type": selectedType, // Updated value
-                //"resident_type": blockController.text,
-                "mobile": mobileController.text,
-                "created_at": r.created_at,
-                "updated_at": now,
-              };
-              await DatabaseHelper.instance.updateResident(updatedData);
+              // TO THIS:
+              final updatedResident = r.copyWith(
+                name: nameController.text,
+                house_num: flatController.text,
+                resident_type: selectedType,
+                mobile: mobileController.text,
+              );
+
+              await DatabaseHelper.instance.updateResident(updatedResident.toMap());
+
 
               residents.clear();
               page = 0;
