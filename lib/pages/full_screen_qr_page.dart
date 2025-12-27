@@ -18,7 +18,7 @@ class FullScreenQR extends StatelessWidget {
   Future<void> shareQR() async {
     try {
       final qrValidationResult = QrValidator.validate(
-        data: resident.id.toString(),
+        data: resident.uuid,
         version: QrVersions.auto,
         errorCorrectionLevel: QrErrorCorrectLevel.Q,
       );
@@ -96,7 +96,7 @@ class FullScreenQR extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 40), // left-right margin
                 color: Colors.white,
                 child: QrImageView(
-                  data: resident.id.toString(),
+                  data: resident.uuid,
                   version: QrVersions.auto,
                   size: MediaQuery.of(context).size.width - 80, // screen width - margins
                 ),

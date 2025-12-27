@@ -78,25 +78,64 @@ class _ScanQRPageState extends State<ScanQRPage> {
     }
   }
 
-  /// ---------- PROCESS SCAN ----------
-  void processScan(Barcode barcode) {
-    final idString = barcode.rawValue ?? "";
-    final id = int.tryParse(idString);
+  bool isProcessing = false;
 
-    dynamic matched;
-    if (id != null) {
-      try {
-        matched = residents.firstWhere((r) => r["id"] == id);
-      } catch (e) {
-        matched = null;
-      }
+  /// ---------- PROCESS SCAN (DIRECT SQL) ----------
+  void processScan(Barcode barcode) async {
+    // 1. Lock the scanner so it doesn't fire multiple times
+    if (isProcessing) return;
+    setState(() {
+      isProcessing = true;
+    });
+
+    // 2. Clean the scanned value (trim whitespace and normalize)
+    final scannedValue = (barcode.rawValue ?? "")
+        .trim()
+        .replaceAll(RegExp(r'[\n\r]'), '')
+        .toLowerCase();
+
+    if (scannedValue.isEmpty) {
+      setState(() => isProcessing = false);
+      return;
     }
 
-    setState(() {
-      scannedCode = barcode;
-      scannedResident = matched;
-    });
+    try {
+      // 3. Query the database DIRECTLY using the UUID
+      final db = await DatabaseHelper.instance.database;
+      final List<Map<String, dynamic>> results = await db.query(
+        'residents',
+        where: 'uuid = ?',
+        whereArgs: [scannedValue],
+        limit: 1,
+      );
+
+      if (mounted) {
+        setState(() {
+          scannedCode = barcode;
+          // If a record is found, results.first will contain the map
+          scannedResident = results.isNotEmpty ? results.first : null;
+          isProcessing = false; // Unlock scanner
+        });
+      }
+
+      // Debugging logs
+      if (results.isNotEmpty) {
+        print("✅ SQL Match Found: ${results.first['name']}");
+      } else {
+        print("❌ SQL No Match for: $scannedValue");
+      }
+    } catch (e) {
+      print("Error during SQL scan: $e");
+      if (mounted) {
+        setState(() => isProcessing = false);
+      }
+    }
   }
+
+
+
+
+
 
   @override
   Widget build(BuildContext context) {
