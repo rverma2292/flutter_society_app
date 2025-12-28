@@ -167,7 +167,15 @@ class _ResidentFormPageState extends State<ResidentFormPage> {
                 controller: _mobileController,
                 keyboardType: TextInputType.phone,
                 decoration: const InputDecoration(labelText: "Mobile Number", prefixIcon: Icon(Icons.phone)),
-                validator: (v) => v!.isEmpty ? "Enter mobile" : null,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) {
+                    return "Mobile number is required";
+                  }
+                  if (v.trim().length < 10 || v.trim().length > 10) {
+                    return "Mobile number must be 10 digits";
+                  }
+                  return null;
+                },
               ),
 
               const SizedBox(height: 40),
