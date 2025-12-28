@@ -117,7 +117,7 @@ class ResidentDetailsPage extends StatelessWidget {
       child: Row(
         children: [
           CircleAvatar(
-            backgroundColor: Colors.green.withOpacity(0.1),
+            backgroundColor: Colors.green.withValues(alpha: 0.1),
             child: Icon(icon, color: Colors.green),
           ),
           const SizedBox(width: 16),
