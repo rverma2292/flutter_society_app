@@ -7,8 +7,9 @@ class Resident {
   final String house_num;
   final String resident_type;
   final String mobile;
-  final String? created_at; //nullable
-  final String? updated_at; //nullable
+  final String? image_path;
+  final String? created_at;
+  final String? updated_at;
 
   Resident({
     this.id,
@@ -17,6 +18,7 @@ class Resident {
     required this.house_num,
     required this.resident_type,
     required this.mobile,
+    this.image_path,
     this.created_at,
     this.updated_at,
   }): this.uuid = uuid ?? const Uuid().v4();
@@ -32,6 +34,7 @@ class Resident {
       'house_num': house_num,
       'resident_type': resident_type,
       'mobile': mobile,
+      'image_path': image_path,
       'created_at': created_at ?? now,
       'updated_at': now,
     };
@@ -43,15 +46,17 @@ class Resident {
     String? name,
     String? house_num,
     String? resident_type,
-    String? mobile
+    String? mobile,
+    String? image_path,
   }) {
     return Resident(
       id: id ?? this.id,
-      uuid: uuid ?? this.uuid, // Added this
+      uuid: uuid ?? this.uuid,
       name: name ?? this.name,
       house_num: house_num ?? this.house_num,
       resident_type: resident_type ?? this.resident_type,
       mobile: mobile ?? this.mobile,
+      image_path: image_path ?? this.image_path,
       created_at: this.created_at,
       updated_at: this.updated_at,
     );
@@ -61,11 +66,12 @@ class Resident {
   factory Resident.fromMap(Map<String, dynamic> map) {
     return Resident(
       id: map['id'],
-      uuid: map['uuid'], // Added this
+      uuid: map['uuid'],
       name: map['name'] ?? '',
       house_num: map['house_num'] ?? '',
       resident_type: map['resident_type'] ?? '',
       mobile: map['mobile'] ?? '',
+      image_path: map['image_path'],
       created_at: map['created_at'],
       updated_at: map['updated_at'],
     );
@@ -79,7 +85,7 @@ class Resident {
     house_num TEXT NOT NULL,
     resident_type TEXT NOT NULL,
     mobile TEXT NOT NULL UNIQUE,
-    -- CURRENT_TIMESTAMP
+    image_path TEXT, 
     created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%fZ', 'now')),
     updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%fZ', 'now'))
   )

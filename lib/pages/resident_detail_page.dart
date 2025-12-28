@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 
 class ResidentDetailsPage extends StatelessWidget {
@@ -5,79 +6,127 @@ class ResidentDetailsPage extends StatelessWidget {
 
   const ResidentDetailsPage({super.key, required this.resident});
 
+  // Helper method to show full screen image
+  void _viewFullImage(BuildContext context) {
+    if (resident['image_path'] == null) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            iconTheme: const IconThemeData(color: Colors.white),
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              child: Image.file(
+                File(resident['image_path']),
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Resident Details"),
-        centerTitle: true,
+        title: const Text("Access Granted"),
+        backgroundColor: Colors.green, // Green theme for success
+        foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            const CircleAvatar(
-              radius: 50,
-              backgroundColor: Colors.blueAccent,
-              child: Icon(Icons.person, size: 60, color: Colors.white),
+            // 1. Large Profile Image for Verification
+            Center(
+              child: GestureDetector(
+                onTap: () => _viewFullImage(context),
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.green, width: 3),
+                  ),
+                  child: CircleAvatar(
+                    radius: 80,
+                    backgroundColor: Colors.grey[200],
+                    backgroundImage: (resident['image_path'] != null)
+                        ? FileImage(File(resident['image_path']))
+                        : null,
+                    child: (resident['image_path'] == null)
+                        ? const Icon(Icons.person, size: 80, color: Colors.grey)
+                        : null,
+                  ),
+                ),
+              ),
             ),
-            const SizedBox(height: 30),
+            const SizedBox(height: 24),
 
-            _buildInfoCard([
-              _infoRow("Full Name", resident['name'], Icons.badge),
-              _infoRow("House / Flat", resident['house_num'], Icons.home),
-              _infoRow("Resident Type", resident['resident_type'], Icons.people),
-            ]),
+            // 2. Main Name Header
+            Text(
+              resident['name'].toString().toUpperCase(),
+              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            Text(
+              "Resident ID: ${resident['uuid'].toString().substring(0, 8)}...",
+              style: TextStyle(color: Colors.grey[600], fontSize: 14),
+            ),
 
-            const SizedBox(height: 20),
+            const Divider(height: 40),
 
-            _buildInfoCard([
-              _infoRow("Unique ID", resident['uuid'], Icons.fingerprint),
-            ]),
+            // 3. Information Cards
+            _infoRow(Icons.home, "House Number", resident['house_num']),
+            _infoRow(Icons.people, "Resident Type", resident['resident_type'].toString().toUpperCase()),
+            _infoRow(Icons.phone, "Mobile Number", resident['mobile'] ?? "Not Provided"),
 
             const SizedBox(height: 40),
 
+            // 4. Action Button
             SizedBox(
               width: double.infinity,
-              height: 50,
+              height: 55,
               child: ElevatedButton.icon(
-                icon: const Icon(Icons.camera_alt),
-                label: const Text("Scan Another"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
                 onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.qr_code_scanner),
+                label: const Text("SCAN NEXT RESIDENT",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
-            )
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildInfoCard(List<Widget> children) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(children: children),
-      ),
-    );
-  }
-
-  Widget _infoRow(String label, String value, IconData icon) {
+  Widget _infoRow(IconData icon, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         children: [
-          Icon(icon, color: Colors.blueAccent),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              ],
-            ),
+          CircleAvatar(
+            backgroundColor: Colors.green.withOpacity(0.1),
+            child: Icon(icon, color: Colors.green),
+          ),
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+              Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+            ],
           ),
         ],
       ),

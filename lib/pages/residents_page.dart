@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import '../models/resident.dart';
 import '../database/database_helper.dart';
+import 'resident_form_page.dart';
+import 'dart:io';
+import 'resident_detail_page.dart';
 
 class ResidentsPage extends StatefulWidget {
   const ResidentsPage({super.key});
@@ -11,10 +14,12 @@ class ResidentsPage extends StatefulWidget {
 
 class _ResidentsPageState extends State<ResidentsPage> {
   List<Resident> residents = [];
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = "";
 
   int page = 0;
   int totalCount = 0;
-  final int limit = 8; // per page
+  final int limit = 15;
   bool isLoadingMore = false;
   bool hasMore = true;
 
@@ -29,13 +34,13 @@ class _ResidentsPageState extends State<ResidentsPage> {
 
     setState(() => isLoadingMore = true);
 
-    final count = await DatabaseHelper.instance.getTotalResidentsCount();
+    // Pass the search query to your DatabaseHelper
     final result = await DatabaseHelper.instance
-        .getResidentsPage(limit, page * limit);
+        .getResidentsPage(limit, page * limit, query: _searchQuery);
 
-    if (result.isEmpty  && page == 0) {
+    if (result.isEmpty && page == 0) {
       setState(() {
-        totalCount = 0;
+        residents = [];
         hasMore = false;
         isLoadingMore = false;
       });
@@ -43,243 +48,164 @@ class _ResidentsPageState extends State<ResidentsPage> {
     }
 
     setState(() {
-      totalCount = count;
       residents.addAll(result.map((x) => Resident.fromMap(x)).toList());
       page++;
-      isLoadingMore = result.length < limit ? false : isLoadingMore;
       hasMore = result.length >= limit;
       isLoadingMore = false;
     });
   }
 
-  Future<void> addResident(BuildContext context) async {
-    final nameController = TextEditingController();
-    final flatController = TextEditingController();
-    final mobileController = TextEditingController();
-
-    // Controller ki jagah variable use karein aur default value set karein
-    String selectedType = 'owner';
-
-    await showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder( // StatefulBuilder zaroori hai dropdown update dikhane ke liye
-        builder: (context, setState) => AlertDialog(
-          title: Text("Add Resident"),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(controller: nameController, decoration: InputDecoration(labelText: "Name")),
-                TextField(controller: flatController, decoration: InputDecoration(labelText: "House Number")),
-
-                // Dropdown yahan add karein
-                DropdownButtonFormField<String>(
-                  value: selectedType,
-                  decoration: InputDecoration(labelText: "Type"),
-                  items: [
-                    DropdownMenuItem(value: 'owner', child: Text("Owner")),
-                    DropdownMenuItem(value: 'tenant', child: Text("Tenant")),
-                  ],
-                  onChanged: (value) {
-                    setState(() {
-                      selectedType = value!;
-                    });
-                  },
-                ),
-
-                TextField(controller: mobileController, decoration: InputDecoration(labelText: "Mobile")),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: Text("Cancel")),
-            ElevatedButton(
-              onPressed: () async {
-                if (nameController.text.isEmpty || flatController.text.isEmpty || mobileController.text.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please fill all fields.")));
-                  return;
-                }
-
-                final now = DateTime.now().toIso8601String();
-                // TO THIS:
-                final newResident = Resident(
-                  name: nameController.text,
-                  house_num: flatController.text,
-                  resident_type: selectedType,
-                  mobile: mobileController.text,
-                );
-
-                // toMap() will now automatically include the generated UUID
-                await DatabaseHelper.instance.insertResident(newResident.toMap());
-
-                residents.clear();
-                page = 0;
-                hasMore = true;
-                await loadResidentsPage();
-                Navigator.pop(ctx);
-              },
-              child: Text("Save"),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-
-  Future<void> editResident(BuildContext context, Resident r) async {
-  final nameController = TextEditingController(text: r.name);
-  final flatController = TextEditingController(text: r.house_num);
-  final mobileController = TextEditingController(text: r.mobile);
-
-  // Existing value ko initialize karein (ensure lowerCase matching)
-  String selectedType = r.resident_type.toLowerCase() == 'tenant' ? 'tenant' : 'owner';
-
-  await showDialog(
-    context: context,
-    builder: (ctx) => StatefulBuilder(
-      builder: (context, setState) => AlertDialog(
-        title: Text("Edit Resident"),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: TextEditingController(text: r.id.toString()), decoration: InputDecoration(labelText: "ID"), readOnly: true),
-              TextField(controller: nameController, decoration: InputDecoration(labelText: "Name")),
-              TextField(controller: flatController, decoration: InputDecoration(labelText: "House Number")),
-
-              // Dropdown for Edit
-              DropdownButtonFormField<String>(
-                value: selectedType,
-                decoration: InputDecoration(labelText: "Type"),
-                items: [
-                  DropdownMenuItem(value: 'owner', child: Text("Owner")),
-                  DropdownMenuItem(value: 'tenant', child: Text("Tenant")),
-                ],
-                onChanged: (value) {
-                  setState(() {
-                    selectedType = value!;
-                  });
-                },
-              ),
-
-              TextField(controller: mobileController, decoration: InputDecoration(labelText: "Mobile")),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text("Cancel")),
-          ElevatedButton(
-            onPressed: () async {
-              final now = DateTime.now().toIso8601String();
-              // TO THIS:
-              final updatedResident = r.copyWith(
-                name: nameController.text,
-                house_num: flatController.text,
-                resident_type: selectedType,
-                mobile: mobileController.text,
-              );
-
-              await DatabaseHelper.instance.updateResident(updatedResident.toMap());
-
-
-              residents.clear();
-              page = 0;
-              hasMore = true;
-              await loadResidentsPage();
-
-              Navigator.pop(ctx);
-            },
-            child: Text("Save"),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-
-  Future<void> deleteResident(BuildContext context, Resident r) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Delete Resident?'),
-        content: Text('Are you sure you want to delete ${r.name}?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Delete')),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      await DatabaseHelper.instance.deleteResident(r.id.toString());
-
+  void _onSearchChanged(String value) {
+    setState(() {
+      _searchQuery = value;
       residents.clear();
       page = 0;
       hasMore = true;
-      await loadResidentsPage();
+    });
+    loadResidentsPage();
+  }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${r.name} deleted successfully!')),
-      );
-    }
+  void _refreshList() {
+    setState(() {
+      residents.clear();
+      page = 0;
+      hasMore = true;
+    });
+    loadResidentsPage();
+  }
+
+  Future<void> addResident(BuildContext context) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const ResidentFormPage()),
+    );
+    if (result == true) _refreshList();
+  }
+
+  Future<void> editResident(BuildContext context, Resident r) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => ResidentFormPage(resident: r)),
+    );
+    if (result == true) _refreshList();
   }
 
   @override
   Widget build(BuildContext context) {
+    // Matching your MenuButton blue
+    const Color themeBlue = Colors.blue;
+
     return Scaffold(
-      appBar: AppBar(title: Text("Resident List ($totalCount)")),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: themeBlue,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        title: TextField(
+          controller: _searchController,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            hintText: "Search Name, House, Mobile...",
+            hintStyle: TextStyle(color: Colors.white70),
+            border: InputBorder.none,
+            prefixIcon: Icon(Icons.search, color: Colors.white),
+          ),
+          onChanged: _onSearchChanged,
+        ),
+      ),
       body: NotificationListener<ScrollNotification>(
         onNotification: (scrollInfo) {
           if (!isLoadingMore &&
               hasMore &&
               scrollInfo.metrics.pixels == scrollInfo.metrics.maxScrollExtent) {
-            SchedulerBinding.instance.addPostFrameCallback((_) {
-              loadResidentsPage();
-            });
+            loadResidentsPage();
           }
           return false;
         },
-        child: ListView.builder(
+        child: residents.isEmpty && !isLoadingMore
+            ? const Center(child: Text("No Residents Found"))
+            : ListView.builder(
           itemCount: residents.length + (hasMore ? 1 : 0),
           itemBuilder: (context, index) {
             if (index == residents.length) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                loadResidentsPage();
-              });
-              return Padding(
-                padding: const EdgeInsets.all(20),
-                child: Center(child: CircularProgressIndicator()),
+              return const Padding(
+                padding: EdgeInsets.all(20),
+                child: Center(child: CircularProgressIndicator(color: themeBlue)),
               );
             }
 
             final r = residents[index];
 
-            return ListTile(
-              leading: CircleAvatar(child: Text(r.house_num)),
-              title: Text(r.name),
-              subtitle: Text(
-                // Capitalize the first letter of resident_type for display
-                  "Type: ${r.resident_type[0].toUpperCase()}${r.resident_type.substring(1)}\n"
-                      "Mobile: ${r.mobile}"
-              ),
-              isThreeLine: true,
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(icon: Icon(Icons.edit), onPressed: () => editResident(context, r)),
-                  IconButton(icon: Icon(Icons.delete, color: Colors.red), onPressed: () => deleteResident(context, r)),
-                ],
-              ),
+            return Column(
+              children: [
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  // BLUE & WHITE AVATAR
+                  leading: Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.blueAccent.withOpacity(0.3), width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: CircleAvatar(
+                      backgroundColor: themeBlue, // Attractive primary color
+                      backgroundImage: r.image_path != null
+                          ? FileImage(File(r.image_path!))
+                          : null,
+                      child: r.image_path == null
+                          ? Text(
+                        r.house_num,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12, // Small font to fit house numbers like "102-A"
+                        ),
+                      )
+                          : null,
+                    ),
+                  ),
+                  title: Text(
+                    r.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  subtitle: Text(
+                    "Flat: ${r.house_num} • ${r.resident_type.toUpperCase()}\nMob: ${r.mobile}",
+                    style: TextStyle(color: Colors.grey[600], height: 1.3),
+                  ),
+                  isThreeLine: true,
+                  trailing: const Icon(Icons.chevron_right, color: themeBlue),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ResidentDetailsPage(resident: r.toMap()),
+                      ),
+                    );
+                  },
+                  onLongPress: () => editResident(context, r),
+                ),
+                const Divider(height: 1, indent: 80, endIndent: 20),
+              ],
             );
           },
         ),
       ),
       floatingActionButton: FloatingActionButton(
+        backgroundColor: themeBlue,
         onPressed: () => addResident(context),
-        child: Icon(Icons.add),
-        tooltip: "Add Resident",
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }

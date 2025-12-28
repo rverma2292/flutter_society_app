@@ -20,7 +20,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 5,
+      version: 6,
       onCreate: (db, version) async {
         await _createResidentsTable(db);
         await _createGateEntriesTable(db);
@@ -32,6 +32,9 @@ class DatabaseHelper {
         if(oldVersion < 5){
           await _updateResidentsTable(db);
         }
+        if (oldVersion < 6) {
+          await _addImagePathToResidents(db); // Adding Image Support
+        }
       },
     );
   }
@@ -40,15 +43,18 @@ class DatabaseHelper {
     await db.execute('''
           CREATE TABLE residents (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            uuid TEXT, -- ADDED FOR fresh installs
             name TEXT,
             house_num TEXT,
             resident_type TEXT,
             mobile TEXT,
+            uuid TEXT, -- ADDED FOR fresh installs
+            image_path TEXT,
             created_at TEXT,
             updated_at TEXT
           )
         ''');
+    // High-performance optimization for 100,000+ residents:
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_res_uuid ON residents (uuid)');
   }
 
   Future<void> _updateResidentsTable(Database db) async {
@@ -74,6 +80,16 @@ class DatabaseHelper {
       }
     }
     print("Migration complete: UUIDs generated for existing records.");
+  }
+
+  Future<void> _addImagePathToResidents(Database db) async {
+    try {
+      // Adds the column to the existing table
+      await db.execute('ALTER TABLE residents ADD COLUMN image_path TEXT');
+      print("Migration complete: Added image_path column to residents.");
+    } catch (e) {
+      print("Column image_path might already exist: $e");
+    }
   }
 
   Future<void> _createGateEntriesTable(Database db)async {
@@ -112,13 +128,13 @@ class DatabaseHelper {
     );
   }
 
-  Future<List<Map<String, dynamic>>> getResidentsPage(int limit, int offset) async {
+  Future<List<Map<String, dynamic>>> getResidentsPageV2(int limit, int offset) async {
     final db = await database;
 
     print("QUERY: limit=$limit offset=$offset");
 
     final result = await db.rawQuery(
-        'SELECT id, uuid, name, house_num, resident_type, mobile, created_at, updated_at FROM residents ORDER BY id DESC LIMIT $limit OFFSET $offset'
+        'SELECT id, uuid, name, house_num, resident_type, mobile, image_path, created_at, updated_at FROM residents ORDER BY id DESC LIMIT $limit OFFSET $offset'
     );
 
     print("RESULT COUNT = ${result.length}");
@@ -127,6 +143,29 @@ class DatabaseHelper {
     return result;
   }
 
+  Future<List<Map<String, dynamic>>> getResidentsPage(int limit, int offset, {String query = ""}) async {
+    final db = await instance.database;
+
+    if (query.isEmpty) {
+      // Original simple pagination
+      return await db.query(
+        'residents',
+        limit: limit,
+        offset: offset,
+        orderBy: 'id DESC',
+      );
+    } else {
+      // Search with pagination
+      return await db.query(
+        'residents',
+        where: 'name LIKE ? OR house_num LIKE ? OR mobile LIKE ?',
+        whereArgs: ['%$query%', '%$query%', '%$query%'],
+        limit: limit,
+        offset: offset,
+        orderBy: 'id DESC',
+      );
+    }
+  }
 
 
   Future<void> insertResident(Map<String, dynamic> data) async {
@@ -149,7 +188,6 @@ class DatabaseHelper {
     final db = await database;
     await db.delete('residents', where: 'id = ?', whereArgs: [id]);
   }
-
 
   Future<void> seedResidents() async {
     final db = await database; // get your database instance
@@ -205,5 +243,4 @@ class DatabaseHelper {
     final result = await db.rawQuery('SELECT COUNT(*) FROM residents');
     return Sqflite.firstIntValue(result) ?? 0;
   }
-
 }
