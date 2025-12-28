@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-
-// import '../widgets/menu_button.dart';
 import '../database/database_helper.dart';
 import 'residents_page.dart';
 import 'show_qr_page.dart';
@@ -11,7 +9,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:csv/csv.dart';
-import '../models/resident.dart';
+import '../services/vehicle_import_service.dart';
 
 
 class MenuPage extends StatelessWidget {
@@ -142,6 +140,32 @@ class MenuPage extends StatelessWidget {
                   if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+                  );
+                }
+              },
+            ),
+            MenuButton(
+              title: "Import Vehicles (CSV)",
+              color: Colors.brown,
+              onTap: () async {
+                try {
+                  // Calling the service we just created
+                  await VehicleImportService.pickAndImportCsv();
+
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Vehicles imported successfully!"),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } catch (e) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text("Error: $e"),
+                      backgroundColor: Colors.red,
+                    ),
                   );
                 }
               },

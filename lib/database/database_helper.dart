@@ -20,7 +20,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 6,
+      version: 7,
       onCreate: (db, version) async {
         await _createResidentsTable(db);
         await _createGateEntriesTable(db);
@@ -34,6 +34,9 @@ class DatabaseHelper {
         }
         if (oldVersion < 6) {
           await _addImagePathToResidents(db); // Adding Image Support
+        }
+        if (oldVersion < 7) {
+          await _createVehiclesTable(db); //residents vehicle table
         }
       },
     );
@@ -113,6 +116,23 @@ class DatabaseHelper {
         ''');
   }
 
+  // Reusable function to create the table
+  Future _createVehiclesTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE residents_vehicles (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        resident_id INTEGER,
+        vehicle_number TEXT NOT NULL,
+        vehicle_type TEXT,
+        vehicle_color TEXT,
+        vehicle_model TEXT,
+        created_at TEXT,
+        updated_at TEXT,
+        FOREIGN KEY (resident_id) REFERENCES residents (id) ON DELETE CASCADE
+      )
+    ''');
+  }
+
   Future<List<Map<String, dynamic>>> getAllResidents() async {
     final db = await database;
     return await db.query('residents');
@@ -166,7 +186,6 @@ class DatabaseHelper {
       );
     }
   }
-
 
   Future<void> insertResident(Map<String, dynamic> data) async {
     final db = await database;

@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../models/resident_vehicle_model.dart'; // New Import
+import '../database/resident_vehicle_dao.dart'; // New Import
 
 class ResidentDetailsPage extends StatelessWidget {
   final Map<String, dynamic> resident;
@@ -87,6 +89,40 @@ class ResidentDetailsPage extends StatelessWidget {
             _infoRow(Icons.people, "Resident Type", resident['resident_type'].toString().toUpperCase()),
             _infoRow(Icons.phone, "Mobile Number", resident['mobile'] ?? "Not Provided"),
 
+            // --- START OF VEHICLE SECTION ---
+            const Divider(height: 40),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                "VEHICLE DETAILS",
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.green),
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            FutureBuilder<List<ResidentVehicle>>(
+              // Note: Ensure your resident Map has 'id'
+              future: ResidentVehicleDao().getVehiclesByResidentId(resident['id']),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const LinearProgressIndicator(color: Colors.green);
+                }
+
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 10),
+                    child: Text("No vehicles registered", style: TextStyle(color: Colors.grey)),
+                  );
+                }
+
+                final vehicles = snapshot.data!;
+                return Column(
+                  children: vehicles.map((v) => _vehicleItem(v)).toList(),
+                );
+              },
+            ),
+            // --- END OF VEHICLE SECTION ---
+
             const SizedBox(height: 40),
 
             // 4. Action Button
@@ -110,6 +146,101 @@ class ResidentDetailsPage extends StatelessWidget {
       ),
     );
   }
+
+  // New Helper Widget for individual vehicle display
+  Widget _vehicleItem(ResidentVehicle vehicle) {
+    // 1. Logic to choose icon based on vehicle type
+    IconData vehicleIcon;
+    String type = (vehicle.vehicleType ?? "").toLowerCase();
+
+    if (type.contains("bike") || type.contains("scooter") || type.contains("two")) {
+      vehicleIcon = Icons.motorcycle;
+    } else if (type.contains("pickup") || type.contains("truck") || type.contains("van")) {
+      vehicleIcon = Icons.local_shipping;
+    } else {
+      vehicleIcon = Icons.directions_car;
+    }
+
+    // 2. Logic to parse color string to Flutter Color
+    // Defaults to transparent if color is not recognized
+    Color displayColor;
+    try {
+      String colorName = (vehicle.vehicleColor ?? "transparent").toLowerCase();
+      switch (colorName) {
+        case 'red': displayColor = Colors.red; break;
+        case 'blue': displayColor = Colors.blue; break;
+        case 'white': displayColor = Colors.white; break;
+        case 'black': displayColor = Colors.black; break;
+        case 'silver': displayColor = Colors.grey[400]!; break;
+        case 'grey': displayColor = Colors.grey; break;
+        case 'yellow': displayColor = Colors.yellow; break;
+        case 'green': displayColor = Colors.green; break;
+        default: displayColor = Colors.transparent;
+      }
+    } catch (e) {
+      displayColor = Colors.transparent;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: Row(
+        children: [
+          // Dynamic Icon
+          Icon(vehicleIcon, color: Colors.green, size: 28),
+          const SizedBox(width: 12),
+
+          // Vehicle Details
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  vehicle.vehicleNumber.toUpperCase(),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  "${vehicle.vehicleType ?? ''} ${vehicle.vehicleModel ?? ''}".trim(),
+                  style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          ),
+
+          // Color Indicator Box
+          if (vehicle.vehicleColor != null)
+            Column(
+              children: [
+                Container(
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: displayColor,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.grey[400]!, width: 0.5),
+                    boxShadow: [
+                      if (displayColor != Colors.transparent)
+                        BoxShadow(color: Colors.black12, blurRadius: 2, offset: Offset(0, 1))
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  vehicle.vehicleColor!,
+                  style: const TextStyle(fontSize: 10, color: Colors.grey),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
 
   Widget _infoRow(IconData icon, String label, String value) {
     return Padding(
