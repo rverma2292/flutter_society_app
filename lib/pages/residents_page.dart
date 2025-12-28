@@ -126,31 +126,31 @@ class _ResidentsPageState extends State<ResidentsPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-  backgroundColor: themeBlue,
-  foregroundColor: Colors.white,
-  elevation: 0,
-  title: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      TextField(
-        controller: _searchController,
-        style: const TextStyle(color: Colors.white, fontSize: 18),
-        decoration: const InputDecoration(
-          hintText: "Search Residents...",
-          hintStyle: TextStyle(color: Colors.white70),
-          border: InputBorder.none,
-          isDense: true,
+        backgroundColor: themeBlue,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _searchController,
+              style: const TextStyle(color: Colors.white, fontSize: 18),
+              decoration: const InputDecoration(
+                hintText: "Search Residents...",
+                hintStyle: TextStyle(color: Colors.white70),
+                border: InputBorder.none,
+                isDense: true,
+              ),
+              onChanged: _onSearchChanged,
+            ),
+            // TOTAL COUNT SUBTITLE
+            Text(
+              "Showing: ${residents.length} of $totalCount residents",
+              style: const TextStyle(fontSize: 12, color: Colors.white70),
+            ),
+          ],
         ),
-        onChanged: _onSearchChanged,
       ),
-      // TOTAL COUNT SUBTITLE
-      Text(
-        "Showing: ${residents.length} of $totalCount residents",
-        style: const TextStyle(fontSize: 12, color: Colors.white70),
-      ),
-    ],
-  ),
-),
 
       body: NotificationListener<ScrollNotification>(
         onNotification: (scrollInfo) {
@@ -169,7 +169,8 @@ class _ResidentsPageState extends State<ResidentsPage> {
             if (index == residents.length) {
               return const Padding(
                 padding: EdgeInsets.all(20),
-                child: Center(child: CircularProgressIndicator(color: themeBlue)),
+                child: Center(
+                    child: CircularProgressIndicator(color: themeBlue)),
               );
             }
 
@@ -178,14 +179,16 @@ class _ResidentsPageState extends State<ResidentsPage> {
             return Column(
               children: [
                 ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 8),
                   // BLUE & WHITE AVATAR
                   leading: Container(
                     width: 50,
                     height: 50,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.blueAccent.withOpacity(0.3), width: 2),
+                      border: Border.all(color: Colors.blueAccent.withOpacity(
+                          0.3), width: 2),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.1),
@@ -220,7 +223,8 @@ class _ResidentsPageState extends State<ResidentsPage> {
                     ),
                   ),
                   subtitle: Text(
-                    "Flat: ${r.house_num} • ${r.resident_type.toUpperCase()}\nMob: ${r.mobile}",
+                    "Flat: ${r.house_num} • ${r.resident_type
+                        .toUpperCase()}\nMob: ${r.mobile}",
                     style: TextStyle(color: Colors.grey[600], height: 1.3),
                   ),
                   isThreeLine: true,
@@ -229,7 +233,8 @@ class _ResidentsPageState extends State<ResidentsPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                        icon: const Icon(Icons.delete_outline, color: Colors
+                            .redAccent),
                         onPressed: () => _confirmDelete(context, r),
                       ),
                       const Icon(Icons.chevron_right, color: themeBlue),
@@ -239,7 +244,8 @@ class _ResidentsPageState extends State<ResidentsPage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => ResidentDetailsPage(resident: r.toMap()),
+                        builder: (context) =>
+                            ResidentDetailsPage(resident: r.toMap()),
                       ),
                     );
                   },
