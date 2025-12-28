@@ -33,7 +33,7 @@ class _ResidentsPageState extends State<ResidentsPage> {
     if (isLoadingMore || !hasMore) return;
 
     setState(() => isLoadingMore = true);
-
+    final total = await DatabaseHelper.instance.getTotalResidentsCount();
     // Pass the search query to your DatabaseHelper
     final result = await DatabaseHelper.instance
         .getResidentsPage(limit, page * limit, query: _searchQuery);
@@ -48,7 +48,9 @@ class _ResidentsPageState extends State<ResidentsPage> {
     }
 
     setState(() {
+      if (page == 0) residents.clear();
       residents.addAll(result.map((x) => Resident.fromMap(x)).toList());
+      totalCount = total;
       page++;
       hasMore = result.length >= limit;
       isLoadingMore = false;
@@ -90,6 +92,32 @@ class _ResidentsPageState extends State<ResidentsPage> {
     if (result == true) _refreshList();
   }
 
+  Future<void> _confirmDelete(BuildContext context, Resident r) async {
+    final bool? confirm = await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Delete Resident"),
+        content: Text("Are you sure you want to delete ${r.name}?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("CANCEL"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("DELETE", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      // Ensure your DatabaseHelper has a deleteResident method taking an ID
+      await DatabaseHelper.instance.deleteResident(r.id.toString());
+      _refreshList();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Matching your MenuButton blue
@@ -98,21 +126,32 @@ class _ResidentsPageState extends State<ResidentsPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: themeBlue,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        title: TextField(
-          controller: _searchController,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            hintText: "Search Name, House, Mobile...",
-            hintStyle: TextStyle(color: Colors.white70),
-            border: InputBorder.none,
-            prefixIcon: Icon(Icons.search, color: Colors.white),
-          ),
-          onChanged: _onSearchChanged,
+  backgroundColor: themeBlue,
+  foregroundColor: Colors.white,
+  elevation: 0,
+  title: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      TextField(
+        controller: _searchController,
+        style: const TextStyle(color: Colors.white, fontSize: 18),
+        decoration: const InputDecoration(
+          hintText: "Search Residents...",
+          hintStyle: TextStyle(color: Colors.white70),
+          border: InputBorder.none,
+          isDense: true,
         ),
+        onChanged: _onSearchChanged,
       ),
+      // TOTAL COUNT SUBTITLE
+      Text(
+        "Showing: ${residents.length} of $totalCount residents",
+        style: const TextStyle(fontSize: 12, color: Colors.white70),
+      ),
+    ],
+  ),
+),
+
       body: NotificationListener<ScrollNotification>(
         onNotification: (scrollInfo) {
           if (!isLoadingMore &&
@@ -185,7 +224,17 @@ class _ResidentsPageState extends State<ResidentsPage> {
                     style: TextStyle(color: Colors.grey[600], height: 1.3),
                   ),
                   isThreeLine: true,
-                  trailing: const Icon(Icons.chevron_right, color: themeBlue),
+                  // Added Delete Icon alongside the Chevron
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                        onPressed: () => _confirmDelete(context, r),
+                      ),
+                      const Icon(Icons.chevron_right, color: themeBlue),
+                    ],
+                  ),
                   onTap: () {
                     Navigator.push(
                       context,
