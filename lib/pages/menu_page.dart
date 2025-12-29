@@ -10,7 +10,7 @@ import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:csv/csv.dart';
 import '../services/vehicle_import_service.dart';
-
+import 'vehicle_list_page.dart';
 
 class MenuPage extends StatelessWidget {
   const MenuPage({super.key});
@@ -57,6 +57,14 @@ class MenuPage extends StatelessWidget {
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const ResidentsPage()),
+              ),
+            ),
+            MenuButton(
+              title: "Vehicle List",
+              color: Colors.blue, // Different color to distinguish it
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const VehicleListPage()),
               ),
             ),
             MenuButton(

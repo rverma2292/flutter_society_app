@@ -7,7 +7,11 @@ import 'dart:io';
 import 'resident_detail_page.dart';
 
 class ResidentsPage extends StatefulWidget {
-  const ResidentsPage({super.key});
+  final bool isSelectionMode;
+  const ResidentsPage({
+    super.key,
+    this.isSelectionMode = false
+  });
   @override
   _ResidentsPageState createState() => _ResidentsPageState();
 }

@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import '../models/resident_vehicle_model.dart';
 import '../database/resident_vehicle_dao.dart';
+import '../database/resident_dao.dart'; // Import ResidentDao
 
 class ResidentVehicleFormPage extends StatefulWidget {
-  final int residentId;
-  final ResidentVehicle? vehicle; // If null, we are adding. If not null, we are editing.
+  final int? residentId;
+  final ResidentVehicle? vehicle;
 
   const ResidentVehicleFormPage({
     super.key,
-    required this.residentId,
+    this.residentId,
     this.vehicle,
   });
 
@@ -19,6 +20,10 @@ class ResidentVehicleFormPage extends StatefulWidget {
 class _ResidentVehicleFormPageState extends State<ResidentVehicleFormPage> {
   final _formKey = GlobalKey<FormState>();
 
+  // State for Resident Selection
+  int? _selectedResidentId;
+  String? _selectedResidentName;
+
   late TextEditingController _numberController;
   late TextEditingController _modelController;
   String? _selectedType;
@@ -26,7 +31,6 @@ class _ResidentVehicleFormPageState extends State<ResidentVehicleFormPage> {
 
   final List<String> _vehicleTypes = ['Car', 'Bike', 'Scooter', 'Pickup', 'Truck', 'Other'];
 
-  // Defined list of colors with display names and actual Flutter colors
   final List<Map<String, dynamic>> _colorOptions = [
     {'name': 'White', 'color': Colors.white},
     {'name': 'Off White', 'color': const Color(0xFFFAF9F6)},
@@ -47,23 +51,49 @@ class _ResidentVehicleFormPageState extends State<ResidentVehicleFormPage> {
   @override
   void initState() {
     super.initState();
+    // Initialize selection from widget parameters
+    _selectedResidentId = widget.residentId ?? widget.vehicle?.residentId;
+
     _numberController = TextEditingController(text: widget.vehicle?.vehicleNumber);
     _modelController = TextEditingController(text: widget.vehicle?.vehicleModel);
-
     _selectedType = widget.vehicle?.vehicleType ?? 'Car';
-
-    // Set initial color if editing, otherwise default to White
     _selectedColor = widget.vehicle?.vehicleColor ?? 'White';
   }
 
+  // --- Searchable Modal for 1L+ Records ---
+  void _showResidentPicker() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => _ResidentSearchSheet(
+        onSelected: (id, name, house) {
+          setState(() {
+            _selectedResidentId = id;
+            _selectedResidentName = "$name ($house)";
+          });
+        },
+      ),
+    );
+  }
+
   Future<void> _saveVehicle() async {
+    if (_selectedResidentId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please select a resident first")),
+      );
+      return;
+    }
+
     if (_formKey.currentState!.validate()) {
       final dao = ResidentVehicleDao();
       final now = DateTime.now().toIso8601String();
 
       final vehicle = ResidentVehicle(
-        id: widget.vehicle?.id, // Keep ID if editing
-        residentId: widget.residentId,
+        id: widget.vehicle?.id,
+        residentId: _selectedResidentId!,
         vehicleNumber: _numberController.text.trim().toUpperCase(),
         vehicleType: _selectedType,
         vehicleColor: _selectedColor,
@@ -83,7 +113,6 @@ class _ResidentVehicleFormPageState extends State<ResidentVehicleFormPage> {
     }
   }
 
-  // ... (Confirm Delete logic remains the same)
   Future<void> _confirmDelete() async {
     final bool? confirm = await showDialog(
       context: context,
@@ -130,7 +159,28 @@ class _ResidentVehicleFormPageState extends State<ResidentVehicleFormPage> {
           padding: const EdgeInsets.all(20),
           child: Column(
             children: [
-              // Vehicle Number (Required)
+              // --- Optimized Searchable Selector ---
+              if (widget.residentId == null && !isEditing) ...[
+                InkWell(
+                  onTap: _showResidentPicker,
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: "Assign to Resident*",
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.person_search),
+                      suffixIcon: Icon(Icons.arrow_drop_down),
+                    ),
+                    child: Text(
+                      _selectedResidentName ?? "Tap to search resident...",
+                      style: TextStyle(
+                        color: _selectedResidentName == null ? Colors.grey : Colors.black,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+
               TextFormField(
                 controller: _numberController,
                 decoration: const InputDecoration(
@@ -143,7 +193,6 @@ class _ResidentVehicleFormPageState extends State<ResidentVehicleFormPage> {
               ),
               const SizedBox(height: 20),
 
-              // Type Dropdown
               DropdownButtonFormField<String>(
                 value: _selectedType,
                 decoration: const InputDecoration(
@@ -156,7 +205,6 @@ class _ResidentVehicleFormPageState extends State<ResidentVehicleFormPage> {
               ),
               const SizedBox(height: 20),
 
-              // --- COLOR DROPDOWN WITH VISUALS ---
               DropdownButtonFormField<String>(
                 value: _selectedColor,
                 decoration: const InputDecoration(
@@ -212,5 +260,116 @@ class _ResidentVehicleFormPageState extends State<ResidentVehicleFormPage> {
         ),
       ),
     );
+  }
+}
+
+// Internal class to handle Search and Pagination for 1L+ Residents
+class _ResidentSearchSheet extends StatefulWidget {
+  final Function(int id, String name, String house) onSelected;
+  const _ResidentSearchSheet({required this.onSelected});
+
+  @override
+  State<_ResidentSearchSheet> createState() => _ResidentSearchSheetState();
+}
+
+class _ResidentSearchSheetState extends State<_ResidentSearchSheet> {
+  final List<Map<String, dynamic>> _residents = [];
+  final ScrollController _scrollController = ScrollController();
+  bool _isLoading = false;
+  bool _hasMore = true;
+  int _offset = 0;
+  final int _limit = 20;
+  String _query = "";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+        _loadData();
+      }
+    });
+  }
+
+  Future<void> _loadData({bool isSearch = false}) async {
+    if (_isLoading) return;
+    if (!isSearch && !_hasMore) return;
+
+    setState(() => _isLoading = true);
+
+    if (isSearch) {
+      _offset = 0;
+      _residents.clear();
+      _hasMore = true;
+    }
+
+    // Using your newly added DAO method
+    final results = await ResidentDao().getResidentsPaginated(
+      limit: _limit,
+      offset: _offset,
+      query: _query,
+    );
+
+    setState(() {
+      _isLoading = false;
+      _residents.addAll(results);
+      _offset += _limit;
+      if (results.length < _limit) _hasMore = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: MediaQuery.of(context).size.height * 0.8,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: "Search Name or House...",
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onChanged: (val) {
+                _query = val;
+                _loadData(isSearch: true);
+              },
+            ),
+          ),
+          Expanded(
+            child: _residents.isEmpty && !_isLoading
+                ? const Center(child: Text("No residents found"))
+                : ListView.builder(
+              controller: _scrollController,
+              itemCount: _residents.length + (_hasMore ? 1 : 0),
+              itemBuilder: (context, index) {
+                if (index == _residents.length) {
+                  return const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()));
+                }
+                final res = _residents[index];
+                return ListTile(
+                  leading: const CircleAvatar(child: Icon(Icons.person)),
+                  title: Text(res['name'] ?? 'Unknown'),
+                  subtitle: Text("House: ${res['house_num'] ?? 'N/A'}"),
+                  onTap: () {
+                    widget.onSelected(res['id'], res['name'], res['house_num']);
+                    Navigator.pop(context);
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 }

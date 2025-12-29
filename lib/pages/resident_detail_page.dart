@@ -189,17 +189,26 @@ class _ResidentDetailsPageState extends State<ResidentDetailsPage> {
 
     Color displayColor;
     String colorName = (vehicle.vehicleColor ?? "transparent").toLowerCase();
-    switch (colorName) {
-      case 'red': displayColor = Colors.red; break;
-      case 'blue': displayColor = Colors.blue; break;
-      case 'white': displayColor = Colors.white; break;
-      case 'black': displayColor = Colors.black; break;
-      case 'silver': displayColor = Colors.grey[400]!; break;
-      case 'grey': displayColor = Colors.grey; break;
-      case 'yellow': displayColor = Colors.yellow; break;
-      case 'green': displayColor = Colors.green; break;
-      default: displayColor = Colors.transparent;
-    }
+
+    final Map<String, Color> colorMap = {
+      'white': Colors.white,
+      'off white': const Color(0xFFFAF9F6),
+      'silver': Colors.grey[400]!,
+      'grey': Colors.grey,
+      'black': Colors.black,
+      'red': Colors.red,
+      'blue': Colors.blue,
+      'dark blue': const Color(0xFF00008B),
+      'green': Colors.green,
+      'yellow': Colors.yellow,
+      'orange': Colors.orange,
+      'brown': Colors.brown,
+      'gold': const Color(0xFFFFD700),
+    };
+
+    displayColor =
+        colorMap[colorName.toLowerCase()] ?? Colors.transparent;
+
 
     return GestureDetector(
       onTap: () async {

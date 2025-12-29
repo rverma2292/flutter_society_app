@@ -95,4 +95,46 @@ class ResidentVehicleDao {
 
     await batch.commit(noResult: true);
   }
+
+  // Get All Vehicles
+  Future<List<ResidentVehicle>> getAllVehicles() async {
+    final db = await dbHelper.database;
+    final List<Map<String, dynamic>> maps = await db.query('residents_vehicles', orderBy: 'created_at DESC');
+    print("All Vehicles: $maps");
+    return List.generate(maps.length, (i) {
+      return ResidentVehicle.fromMap(maps[i]);
+    });
+  }
+
+  // Get All Vehicles with Resident Names
+  Future<List<Map<String, dynamic>>> getAllVehiclesWithResidentNames() async {
+    final db = await dbHelper.database;
+    // This SQL joins the vehicles table with the residents table
+    return await db.rawQuery('''
+    SELECT v.*, r.name as resident_name, r.house_num 
+    FROM $tableName v
+    JOIN residents r ON v.resident_id = r.id
+    ORDER BY v.created_at DESC
+  ''');
+  }
+
+  Future<List<Map<String, dynamic>>> getVehiclesPaginated({required int limit, required int offset}) async {
+    final db = await dbHelper.database;
+    return await db.rawQuery('''
+    SELECT v.*, r.name as resident_name, r.house_num 
+    FROM residents_vehicles v
+    JOIN residents r ON v.resident_id = r.id
+    ORDER BY v.created_at DESC
+    LIMIT ? OFFSET ?
+  ''', [limit, offset]);
+  }
+
+  // Get the total count of all vehicles
+  Future<int> getTotalVehicleCount() async {
+    final db = await dbHelper.database;
+    final result = await db.rawQuery('SELECT COUNT(*) as total FROM $tableName');
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+
 }
