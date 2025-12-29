@@ -1,16 +1,30 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import '../models/resident_vehicle_model.dart'; // New Import
-import '../database/resident_vehicle_dao.dart'; // New Import
+import '../models/resident_vehicle_model.dart';
+import '../database/resident_vehicle_dao.dart';
+import 'resident_vehicle_form_page.dart';
 
-class ResidentDetailsPage extends StatelessWidget {
+class ResidentDetailsPage extends StatefulWidget {
   final Map<String, dynamic> resident;
 
   const ResidentDetailsPage({super.key, required this.resident});
 
-  // Helper method to show full screen image
+  @override
+  State<ResidentDetailsPage> createState() => _ResidentDetailsPageState();
+}
+
+class _ResidentDetailsPageState extends State<ResidentDetailsPage> {
+  // Key to force FutureBuilder to refresh when we call setState
+  Key _futureBuilderKey = UniqueKey();
+
+  void _refreshData() {
+    setState(() {
+      _futureBuilderKey = UniqueKey();
+    });
+  }
+
   void _viewFullImage(BuildContext context) {
-    if (resident['image_path'] == null) return;
+    if (widget.resident['image_path'] == null) return;
 
     Navigator.push(
       context,
@@ -24,7 +38,7 @@ class ResidentDetailsPage extends StatelessWidget {
           body: Center(
             child: InteractiveViewer(
               child: Image.file(
-                File(resident['image_path']),
+                File(widget.resident['image_path']),
                 fit: BoxFit.contain,
               ),
             ),
@@ -39,14 +53,14 @@ class ResidentDetailsPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Access Granted"),
-        backgroundColor: Colors.green, // Green theme for success
+        backgroundColor: Colors.green,
         foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            // 1. Large Profile Image for Verification
+            // 1. Large Profile Image
             Center(
               child: GestureDetector(
                 onTap: () => _viewFullImage(context),
@@ -59,10 +73,10 @@ class ResidentDetailsPage extends StatelessWidget {
                   child: CircleAvatar(
                     radius: 80,
                     backgroundColor: Colors.grey[200],
-                    backgroundImage: (resident['image_path'] != null)
-                        ? FileImage(File(resident['image_path']))
+                    backgroundImage: (widget.resident['image_path'] != null)
+                        ? FileImage(File(widget.resident['image_path']))
                         : null,
-                    child: (resident['image_path'] == null)
+                    child: (widget.resident['image_path'] == null)
                         ? const Icon(Icons.person, size: 80, color: Colors.grey)
                         : null,
                   ),
@@ -71,38 +85,53 @@ class ResidentDetailsPage extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // 2. Main Name Header
+            // 2. Name Header
             Text(
-              resident['name'].toString().toUpperCase(),
+              widget.resident['name'].toString().toUpperCase(),
               style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
             Text(
-              "Resident ID: ${resident['uuid'].toString().substring(0, 8)}...",
+              "Resident ID: ${widget.resident['uuid']?.toString().substring(0, 8) ?? 'N/A'}...",
               style: TextStyle(color: Colors.grey[600], fontSize: 14),
             ),
 
             const Divider(height: 40),
 
-            // 3. Information Cards
-            _infoRow(Icons.home, "House Number", resident['house_num']),
-            _infoRow(Icons.people, "Resident Type", resident['resident_type'].toString().toUpperCase()),
-            _infoRow(Icons.phone, "Mobile Number", resident['mobile'] ?? "Not Provided"),
+            // 3. Information Rows
+            _infoRow(Icons.home, "House Number", widget.resident['house_num']),
+            _infoRow(Icons.people, "Resident Type", widget.resident['resident_type'].toString().toUpperCase()),
+            _infoRow(Icons.phone, "Mobile Number", widget.resident['mobile'] ?? "Not Provided"),
 
-            // --- START OF VEHICLE SECTION ---
+            // --- VEHICLE SECTION ---
             const Divider(height: 40),
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                "VEHICLE DETAILS",
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.green),
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "VEHICLE DETAILS",
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.green),
+                ),
+                TextButton.icon(
+                  onPressed: () async {
+                    final refresh = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ResidentVehicleFormPage(residentId: widget.resident['id']),
+                      ),
+                    );
+                    if (refresh == true) _refreshData();
+                  },
+                  icon: const Icon(Icons.add, size: 18, color: Colors.green),
+                  label: const Text("ADD", style: TextStyle(color: Colors.green)),
+                ),
+              ],
             ),
             const SizedBox(height: 10),
 
             FutureBuilder<List<ResidentVehicle>>(
-              // Note: Ensure your resident Map has 'id'
-              future: ResidentVehicleDao().getVehiclesByResidentId(resident['id']),
+              key: _futureBuilderKey, // Refresh triggered when key changes
+              future: ResidentVehicleDao().getVehiclesByResidentId(widget.resident['id']),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const LinearProgressIndicator(color: Colors.green);
@@ -117,11 +146,10 @@ class ResidentDetailsPage extends StatelessWidget {
 
                 final vehicles = snapshot.data!;
                 return Column(
-                  children: vehicles.map((v) => _vehicleItem(v)).toList(),
+                  children: vehicles.map((v) => _vehicleItem(context, v)).toList(),
                 );
               },
             ),
-            // --- END OF VEHICLE SECTION ---
 
             const SizedBox(height: 40),
 
@@ -147,9 +175,7 @@ class ResidentDetailsPage extends StatelessWidget {
     );
   }
 
-  // New Helper Widget for individual vehicle display
-  Widget _vehicleItem(ResidentVehicle vehicle) {
-    // 1. Logic to choose icon based on vehicle type
+  Widget _vehicleItem(BuildContext context, ResidentVehicle vehicle) {
     IconData vehicleIcon;
     String type = (vehicle.vehicleType ?? "").toLowerCase();
 
@@ -161,86 +187,81 @@ class ResidentDetailsPage extends StatelessWidget {
       vehicleIcon = Icons.directions_car;
     }
 
-    // 2. Logic to parse color string to Flutter Color
-    // Defaults to transparent if color is not recognized
     Color displayColor;
-    try {
-      String colorName = (vehicle.vehicleColor ?? "transparent").toLowerCase();
-      switch (colorName) {
-        case 'red': displayColor = Colors.red; break;
-        case 'blue': displayColor = Colors.blue; break;
-        case 'white': displayColor = Colors.white; break;
-        case 'black': displayColor = Colors.black; break;
-        case 'silver': displayColor = Colors.grey[400]!; break;
-        case 'grey': displayColor = Colors.grey; break;
-        case 'yellow': displayColor = Colors.yellow; break;
-        case 'green': displayColor = Colors.green; break;
-        default: displayColor = Colors.transparent;
-      }
-    } catch (e) {
-      displayColor = Colors.transparent;
+    String colorName = (vehicle.vehicleColor ?? "transparent").toLowerCase();
+    switch (colorName) {
+      case 'red': displayColor = Colors.red; break;
+      case 'blue': displayColor = Colors.blue; break;
+      case 'white': displayColor = Colors.white; break;
+      case 'black': displayColor = Colors.black; break;
+      case 'silver': displayColor = Colors.grey[400]!; break;
+      case 'grey': displayColor = Colors.grey; break;
+      case 'yellow': displayColor = Colors.yellow; break;
+      case 'green': displayColor = Colors.green; break;
+      default: displayColor = Colors.transparent;
     }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: Row(
-        children: [
-          // Dynamic Icon
-          Icon(vehicleIcon, color: Colors.green, size: 28),
-          const SizedBox(width: 12),
-
-          // Vehicle Details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  vehicle.vehicleNumber.toUpperCase(),
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  "${vehicle.vehicleType ?? ''} ${vehicle.vehicleModel ?? ''}".trim(),
-                  style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                ),
-              ],
+    return GestureDetector(
+      onTap: () async {
+        final refresh = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ResidentVehicleFormPage(
+              residentId: widget.resident['id'],
+              vehicle: vehicle,
             ),
           ),
-
-          // Color Indicator Box
-          if (vehicle.vehicleColor != null)
-            Column(
-              children: [
-                Container(
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    color: displayColor,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: Colors.grey[400]!, width: 0.5),
-                    boxShadow: [
-                      if (displayColor != Colors.transparent)
-                        BoxShadow(color: Colors.black12, blurRadius: 2, offset: Offset(0, 1))
-                    ],
+        );
+        if (refresh == true) _refreshData();
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey[300]!),
+        ),
+        child: Row(
+          children: [
+            Icon(vehicleIcon, color: Colors.green, size: 28),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    vehicle.vehicleNumber.toUpperCase(),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  vehicle.vehicleColor!,
-                  style: const TextStyle(fontSize: 10, color: Colors.grey),
-                ),
-              ],
+                  Text(
+                    "${vehicle.vehicleType ?? ''} ${vehicle.vehicleModel ?? ''}".trim(),
+                    style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
             ),
-        ],
+            if (vehicle.vehicleColor != null && vehicle.vehicleColor!.isNotEmpty)
+              Column(
+                children: [
+                  Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: displayColor,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.grey[400]!, width: 0.5),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(vehicle.vehicleColor!, style: const TextStyle(fontSize: 9, color: Colors.grey)),
+                ],
+              ),
+          ],
+        ),
       ),
     );
   }
-
 
   Widget _infoRow(IconData icon, String label, String value) {
     return Padding(
@@ -248,7 +269,7 @@ class ResidentDetailsPage extends StatelessWidget {
       child: Row(
         children: [
           CircleAvatar(
-            backgroundColor: Colors.green.withValues(alpha: 0.1),
+            backgroundColor: Colors.green.withOpacity(0.1),
             child: Icon(icon, color: Colors.green),
           ),
           const SizedBox(width: 16),
