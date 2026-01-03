@@ -71,7 +71,7 @@ class GateEntryDao {
     if (result > 0) {
       await db.insert('activity_logs', {
         'user_id': userId,
-        'resident_id': id, // Entry ID as reference
+        'reference_id': id, // Entry ID as reference
         'action': "VISITOR_EXIT: $personName marked out",
         'timestamp': now,
       });

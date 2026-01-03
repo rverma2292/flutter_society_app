@@ -12,7 +12,7 @@ class ActivityLogDao {
       SELECT activity_logs.*, users.full_name as guard_name, residents.name as resident_name
       FROM activity_logs
       LEFT JOIN users ON activity_logs.user_id = users.id
-      LEFT JOIN residents ON activity_logs.resident_id = residents.id
+      LEFT JOIN residents ON activity_logs.reference_id = residents.id
       ORDER BY activity_logs.id DESC
     ''');
 
@@ -20,12 +20,12 @@ class ActivityLogDao {
   }
 
   // To get logs by resident
-  Future<List<ActivityLogModel>> getLogsByResident(int residentId) async {
+  Future<List<ActivityLogModel>> getLogsByResident(int referenceId) async {
     final db = await dbHelper.database;
     final List<Map<String, dynamic>> maps = await db.query(
       'activity_logs',
-      where: 'resident_id = ?',
-      whereArgs: [residentId],
+      where: 'reference_id = ?',
+      whereArgs: [referenceId],
       orderBy: 'id DESC',
     );
     return List.generate(maps.length, (i) => ActivityLogModel.fromMap(maps[i]));

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../database/database_helper.dart';
 import '../database/gate_entery_dao.dart';
 import '../models/gate_entry_model.dart';
 import 'package:intl/intl.dart';
@@ -145,7 +144,7 @@ class _GateEntryFormPageState extends State<GateEntryFormPage> {
                       // 4. Activity Log Insert
                       await ActivityLogDao().insertLog(ActivityLogModel(
                         userId: userId,
-                        residentId: newId, // Generic ID (Entry ID)
+                        referenceId: newId, // Generic ID (Entry ID)
                         action: "GATE_${widget.entryType.toUpperCase()}: ${entry.personName}",
                         timestamp: DateTime.now().toIso8601String(),
                       ));

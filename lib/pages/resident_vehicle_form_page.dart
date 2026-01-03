@@ -83,28 +83,27 @@ class _ResidentVehicleFormPageState extends State<ResidentVehicleFormPage> {
   }
 
   Future<void> _saveVehicle() async {
-      final user = await SessionManager.getCurrentUser();
-      final int? userId = user['id'];
-      final String? userName = user['name'];
-      if (userId == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Session expired. Please login again."), backgroundColor: Colors.red),
-          );
-        }
-        return;
+    final user = await SessionManager.getCurrentUser();
+    final int? userId = user['id'];
+    final String? userName = user['name'];
+    if (userId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Session expired. Please login again."), backgroundColor: Colors.red),
+        );
       }
-      final String now = DateTime.now().toIso8601String();
-      final bool isNew = widget.vehicle == null;
-        if (_selectedResidentId == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Please select a resident first")),
-          );
-          return;
-        }
+      return;
+    }
+
+    final bool isNew = widget.vehicle == null;
+    if (_selectedResidentId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please select a resident first")),
+      );
+      return;
+    }
 
     if (_formKey.currentState!.validate()) {
-      final dao = ResidentVehicleDao();
       final now = DateTime.now().toIso8601String();
 
       final vehicle = ResidentVehicle(
@@ -128,7 +127,7 @@ class _ResidentVehicleFormPageState extends State<ResidentVehicleFormPage> {
           // 2. Activity Log: New Vehicle Inserted ( With Inserted ID )
           await ActivityLogDao().insertLog(ActivityLogModel(
             userId: userId,
-            residentId: _selectedResidentId,
+            referenceId: _selectedResidentId,
             action: "VEHICLE_ADDED: ${vehicle.vehicleNumber} (ID: $newVehicleId)",
             timestamp: now,
           ));
@@ -139,7 +138,7 @@ class _ResidentVehicleFormPageState extends State<ResidentVehicleFormPage> {
           // 4. Activity Log: Update hua
           await ActivityLogDao().insertLog(ActivityLogModel(
             userId: userId,
-            residentId: _selectedResidentId,
+            referenceId: _selectedResidentId,
             action: "VEHICLE_UPDATED: ${vehicle.vehicleNumber}",
             timestamp: now,
           ));

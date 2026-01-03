@@ -2,7 +2,7 @@
 class ActivityLogModel {
   final int? id;
   final int userId;
-  final int? residentId;
+  final int? referenceId;
   final String action;
   final String timestamp;
 
@@ -13,7 +13,7 @@ class ActivityLogModel {
   ActivityLogModel({
     this.id,
     required this.userId,
-    this.residentId,
+    this.referenceId,
     required this.action,
     required this.timestamp,
     this.guardName,
@@ -24,7 +24,7 @@ class ActivityLogModel {
     return ActivityLogModel(
       id: map['id'],
       userId: map['user_id'],
-      residentId: map['resident_id'],
+      referenceId: map['reference_id'],
       action: map['action'],
       timestamp: map['timestamp'],
       guardName: map['guard_name'], // Database query se join hoke aayega
@@ -36,7 +36,7 @@ class ActivityLogModel {
     return {
       'id': id,
       'user_id': userId,
-      'resident_id': residentId,
+      'reference_id': referenceId,
       'action': action,
       'timestamp': timestamp,
     };

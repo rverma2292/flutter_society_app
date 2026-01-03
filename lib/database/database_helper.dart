@@ -22,7 +22,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 10,
+      version: 11,
       onCreate: (db, version) async {
         await _createActivityLogsTable(db);
         await _createGateEntriesTable(db);
@@ -55,6 +55,9 @@ class DatabaseHelper {
         }
         if (oldVersion < 10) {
           await _addRecorderIdColumns(db);
+        }
+        if (oldVersion < 11) {
+          await _renameResidentIdToReferenceId(db);
         }
       },
     );
@@ -182,7 +185,7 @@ class DatabaseHelper {
       CREATE TABLE activity_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
-        resident_id INTEGER,
+        reference_id INTEGER,
         action TEXT, -- 'SCANNED', 'EDITED', 'ADDED_VEHICLE'
         timestamp TEXT,
         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
@@ -228,4 +231,16 @@ class DatabaseHelper {
       print("Error in version 10 migration: $e");
     }
   }
+
+  // Version 11 Migration: Rename resident_id to reference_id
+  Future<void> _renameResidentIdToReferenceId(Database db) async {
+    try {
+      // Direct rename command (SQLite 3.25.0+)
+      await db.execute('ALTER TABLE activity_logs RENAME COLUMN resident_id TO reference_id');
+      print("Migration complete: resident_id renamed to reference_id successfully.");
+    } catch (e) {
+      print("Error renaming column: $e");
+    }
+  }
+
 }

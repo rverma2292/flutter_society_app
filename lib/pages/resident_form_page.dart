@@ -117,7 +117,7 @@ class _ResidentFormPageState extends State<ResidentFormPage> {
 
           await ActivityLogDao().insertLog(ActivityLogModel(
             userId: userId,
-            residentId: newResidentId,
+            referenceId: newResidentId,
             action: "RESIDENT_ADDED: ${residentData.name} (${residentData.house_num})",
             timestamp: now,
           ));
@@ -126,7 +126,7 @@ class _ResidentFormPageState extends State<ResidentFormPage> {
 
           await ActivityLogDao().insertLog(ActivityLogModel(
             userId: userId,
-            residentId: residentData.id,
+            referenceId: residentData.id,
             action: "RESIDENT_UPDATED: ${residentData.name}",
             timestamp: now,
           ));
