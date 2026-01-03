@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // Time format ke liye
 import '../models/gate_entry_model.dart';
 import '../database/gate_entery_dao.dart';
+import '../utils/session_manager.dart';
 
 class GateEntryDetailsPage extends StatefulWidget {
   final GateEntry entry;
@@ -23,22 +24,47 @@ class _GateEntryDetailsPageState extends State<GateEntryDetailsPage> {
   }
 
   // Exit Time update karne ka function
+  // Exit Time update karne ka function
   void _markExit() async {
     if (widget.entry.id == null) return;
 
-    // Naya time generate karein (Readable format jaisa aapne pehle manga tha)
+    // 1. Naya time generate karein
     String now = DateFormat('dd-MM-yyyy hh:mm a').format(DateTime.now());
 
-    await _gateEntryDao.updateExitTime(widget.entry.id!, now);
+    // 2. Session se current user (guard/admin) ki details lein
+    final user = await SessionManager.getCurrentUser();
+    final int? userId = user['id'];
 
+    if (userId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Error: User session not found")),
+        );
+      }
+      return;
+    }
+
+    // 3. Ab 4 arguments bhejein (id, exitTime, userId, personName)
+    // Ye aapke naye DAO structure ke hisab se hai
+    await _gateEntryDao.updateExitTime(
+        widget.entry.id!,
+        now,
+        userId,
+        widget.entry.personName
+    );
+
+    // 4. UI Update karein
     setState(() {
       _currentExitTime = now;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Exit marked successfully!")),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Exit marked successfully!")),
+      );
+    }
   }
+
 
   @override
   Widget build(BuildContext context) {

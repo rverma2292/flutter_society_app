@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import '../models/resident.dart';
-import '../database/database_helper.dart';
+import '../database/resident_dao.dart';
 import 'resident_form_page.dart';
 import 'dart:io';
 import 'resident_detail_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ResidentsPage extends StatefulWidget {
   final bool isSelectionMode;
@@ -17,6 +17,17 @@ class ResidentsPage extends StatefulWidget {
 }
 
 class _ResidentsPageState extends State<ResidentsPage> {
+
+  String userRole = 'guard';
+  Future<void> _loadUserRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        userRole = prefs.getString('userRole') ?? 'guard';
+      });
+    }
+  }
+
   List<Resident> residents = [];
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
@@ -30,6 +41,7 @@ class _ResidentsPageState extends State<ResidentsPage> {
   @override
   void initState() {
     super.initState();
+    _loadUserRole();
     loadResidentsPage();
   }
 
@@ -37,10 +49,9 @@ class _ResidentsPageState extends State<ResidentsPage> {
     if (isLoadingMore || !hasMore) return;
 
     setState(() => isLoadingMore = true);
-    final total = await DatabaseHelper.instance.getTotalResidentsCount();
+    final total = await ResidentDao().getTotalResidentsCount();
     // Pass the search query to your DatabaseHelper
-    final result = await DatabaseHelper.instance
-        .getResidentsPage(limit, page * limit, query: _searchQuery);
+    final result = await ResidentDao().getResidentsPage(limit, page * limit, query: _searchQuery);
 
     if (result.isEmpty && page == 0) {
       setState(() {
@@ -117,7 +128,7 @@ class _ResidentsPageState extends State<ResidentsPage> {
 
     if (confirm == true) {
       // Ensure your DatabaseHelper has a deleteResident method taking an ID
-      await DatabaseHelper.instance.deleteResident(r.id.toString());
+      await ResidentDao().deleteResident(r.id.toString());
       _refreshList();
     }
   }
@@ -236,11 +247,12 @@ class _ResidentsPageState extends State<ResidentsPage> {
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors
-                            .redAccent),
-                        onPressed: () => _confirmDelete(context, r),
-                      ),
+                      if (userRole.toLowerCase() == 'admin')
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, color: Colors
+                              .redAccent),
+                          onPressed: () => _confirmDelete(context, r),
+                        ),
                       const Icon(Icons.chevron_right, color: themeBlue),
                     ],
                   ),
@@ -253,7 +265,9 @@ class _ResidentsPageState extends State<ResidentsPage> {
                       ),
                     );
                   },
-                  onLongPress: () => editResident(context, r),
+                  onLongPress: userRole.toLowerCase() == 'admin'
+                      ? () => editResident(context, r)
+                      : null,
                 ),
                 const Divider(height: 1, indent: 80, endIndent: 20),
               ],
@@ -261,11 +275,13 @@ class _ResidentsPageState extends State<ResidentsPage> {
           },
         ),
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: userRole.toLowerCase() == 'admin'
+          ? FloatingActionButton(
         backgroundColor: themeBlue,
         onPressed: () => addResident(context),
         child: const Icon(Icons.add, color: Colors.white),
-      ),
+      )
+          : null,
     );
   }
 }

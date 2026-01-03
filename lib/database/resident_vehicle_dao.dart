@@ -7,9 +7,9 @@ class ResidentVehicleDao {
   final String tableName = 'residents_vehicles';
 
   // Insert a new vehicle
-  Future<int> insertVehicle(ResidentVehicle vehicle) async {
+  Future<int> insertVehicle(Map<String, dynamic> row) async {
     final db = await dbHelper.database;
-    return await db.insert(tableName, vehicle.toMap());
+    return await db.insert('residents_vehicles', row);
   }
 
   // Get all vehicles for a specific resident
@@ -40,7 +40,7 @@ class ResidentVehicleDao {
   }
 
   // Update vehicle information
-  Future<int> updateVehicle(ResidentVehicle vehicle) async {
+  Future<int> updateVehicleVX(ResidentVehicle vehicle) async {
     final db = await dbHelper.database;
 
     // Create map and update the updated_at timestamp
@@ -54,6 +54,20 @@ class ResidentVehicleDao {
       whereArgs: [vehicle.id],
     );
   }
+
+  // ResidentVehicleDao ke andar ye method update karein
+  Future<int> updateVehicle(Map<String, dynamic> row) async {
+    final db = await dbHelper.database;
+
+    // Map se ID nikal kar update chalayein
+    return await db.update(
+      'residents_vehicles', // Aapke table ka naam
+      row,
+      where: 'id = ?',
+      whereArgs: [row['id']],
+    );
+  }
+
 
   // Delete a vehicle
   Future<int> deleteVehicle(int id) async {

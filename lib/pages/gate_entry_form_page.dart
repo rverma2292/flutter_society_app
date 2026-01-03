@@ -3,6 +3,9 @@ import '../database/database_helper.dart';
 import '../database/gate_entery_dao.dart';
 import '../models/gate_entry_model.dart';
 import 'package:intl/intl.dart';
+import '../utils/session_manager.dart';
+import '../database/activity_log_dao.dart';
+import '../models/activity_log_model.dart';
 
 class GateEntryFormPage extends StatefulWidget {
   final String entryType; // "Incoming" or "Outgoing"
@@ -100,36 +103,69 @@ class _GateEntryFormPageState extends State<GateEntryFormPage> {
                     backgroundColor: widget.entryType == "Incoming" ? Colors.teal : Colors.deepOrange,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  onPressed: () async { // async add karein
-                    if (_formKey.currentState!.validate()) {
+                  onPressed: () async {
+                    if (!_formKey.currentState!.validate()) return;
 
-                      // 4. GateEntry Object banayein
+                    try {
+                      // 1. Get User from Session
+                      final user = await SessionManager.getCurrentUser();
+                      final int? userId = user['id'];
+                      final String? userName = user['name'];
+
+                      if (userId == null) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Session expired. Please login again."), backgroundColor: Colors.red),
+                          );
+                        }
+                        return;
+                      }
+
+                      final String now = DateFormat('dd-MM-yyyy hh:mm a').format(DateTime.now());
+
+                      // 2. GateEntry Object (With Audit Fields)
                       final entry = GateEntry(
-                        personName: _nameController.text,
-                        mobile: _mobileController.text,
+                        personName: _nameController.text.trim(),
+                        mobile: _mobileController.text.trim(),
                         personType: _personType,
-                        purpose: _purposeController.text,
-                        houseNum: _houseNumController.text,
-                        vehicleNo: _vehicleNoController.text,
-                        remarks: _remarksController.text,
-                        // Time save logic
-                        entryTime: widget.entryType == "Incoming"
-                            ? DateFormat('dd-MM-yyyy hh:mm a').format(DateTime.now())
-                            : "",
-
-                        exitTime: widget.entryType == "Outgoing"
-                            ? DateFormat('dd-MM-yyyy hh:mm a').format(DateTime.now())
-                            : "",
+                        purpose: _purposeController.text.trim(),
+                        houseNum: _houseNumController.text.trim(),
+                        vehicleNo: _vehicleNoController.text.trim(),
+                        remarks: _remarksController.text.trim(),
+                        entryTime: widget.entryType == "Incoming" ? now : "",
+                        exitTime: widget.entryType == "Outgoing" ? now : "",
+                        recordedBy: userName,
+                        recordedById: userId,
                       );
 
-                      // 5. DAO ke through Save karein
-                      await _gateEntryDao.insertGateEntry(entry);
+                      // 3. Database Save (Returns new ID)
+                      // Note: DAO ka insert method Future<int> hona chahiye
+                      final int newId = await _gateEntryDao.insertGateEntry(entry.toMap());
+
+                      // 4. Activity Log Insert
+                      await ActivityLogDao().insertLog(ActivityLogModel(
+                        userId: userId,
+                        residentId: newId, // Generic ID (Entry ID)
+                        action: "GATE_${widget.entryType.toUpperCase()}: ${entry.personName}",
+                        timestamp: DateTime.now().toIso8601String(),
+                      ));
 
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text("${widget.entryType} Entry Saved!")),
+                          SnackBar(
+                            content: Text("${widget.entryType} Entry Saved!"),
+                            backgroundColor: widget.entryType == "Incoming" ? Colors.teal : Colors.deepOrange, // Dynamic color
+                            behavior: SnackBarBehavior.floating, // Option: SnackBar ko thoda upar dikhane ke liye
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), // Option: Corners round karne ke liye
+                          ),
                         );
-                        Navigator.pop(context);
+                        Navigator.pop(context, true);
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+                        );
                       }
                     }
                   },

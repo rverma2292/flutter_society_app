@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
 import '../models/resident.dart';
-import '../database/database_helper.dart';
+import '../database/resident_dao.dart';
 
 class ResidentImportService {
 
@@ -41,7 +41,7 @@ class ResidentImportService {
         }
 
         // --- FIXED LINE ---
-        await DatabaseHelper.instance.importResidents(
+        await ResidentDao().importResidents(
           residentsToImport.map((r) => r.toMap()).toList(),
         );
         // ------------------

@@ -2,7 +2,7 @@ class GateEntry {
   final int? id;
   final String personName;
   final String mobile;
-  final String personType; // e.g., Visitor, Delivery, Guest
+  final String personType;
   final String purpose;
   final String houseNum;
   final String? residentType;
@@ -11,6 +11,8 @@ class GateEntry {
   final String? exitTime;
   final String? qrCode;
   final String? remarks;
+  final String? recordedBy;    // <--- Ye add karein
+  final int? recordedById;
   final String? createdAt;
   final String? updatedAt;
 
@@ -27,6 +29,8 @@ class GateEntry {
     this.exitTime,
     this.qrCode,
     this.remarks,
+    this.recordedBy,
+    this.recordedById,
     this.createdAt,
     this.updatedAt,
   });
@@ -46,6 +50,8 @@ class GateEntry {
       'exit_time': exitTime,
       'qr_code': qrCode,
       'remarks': remarks,
+      'recorded_by': recordedBy,
+      'recorded_by_id': recordedById,
       'created_at': createdAt ?? DateTime.now().toIso8601String(),
       'updated_at': updatedAt ?? DateTime.now().toIso8601String(),
     };
@@ -66,6 +72,8 @@ class GateEntry {
       exitTime: map['exit_time'],
       qrCode: map['qr_code'],
       remarks: map['remarks'],
+      recordedBy: map['recorded_by'],
+      recordedById: map['recorded_by_id'],
       createdAt: map['created_at'],
       updatedAt: map['updated_at'],
     );

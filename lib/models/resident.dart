@@ -8,17 +8,21 @@ class Resident {
   final String resident_type;
   final String mobile;
   final String? image_path;
+  final String? recordedBy;
+  final int? recordedById;
   final String? created_at;
   final String? updated_at;
 
   Resident({
     this.id,
-    String? uuid, // Added this
+    String? uuid,
     required this.name,
     required this.house_num,
     required this.resident_type,
     required this.mobile,
     this.image_path,
+    this.recordedBy,
+    this.recordedById,
     this.created_at,
     this.updated_at,
   }): this.uuid = uuid ?? const Uuid().v4();
@@ -35,6 +39,8 @@ class Resident {
       'resident_type': resident_type,
       'mobile': mobile,
       'image_path': image_path,
+      'recorded_by': recordedBy,
+      'recorded_by_id': recordedById,
       'created_at': created_at ?? now,
       'updated_at': now,
     };
@@ -48,6 +54,8 @@ class Resident {
     String? resident_type,
     String? mobile,
     String? image_path,
+    String? recordedBy,
+    int? recordedById,
   }) {
     return Resident(
       id: id ?? this.id,
@@ -57,6 +65,8 @@ class Resident {
       resident_type: resident_type ?? this.resident_type,
       mobile: mobile ?? this.mobile,
       image_path: image_path ?? this.image_path,
+      recordedBy: recordedBy ?? this.recordedBy,
+      recordedById: recordedById ?? this.recordedById,
       created_at: this.created_at,
       updated_at: this.updated_at,
     );
@@ -72,6 +82,8 @@ class Resident {
       resident_type: map['resident_type'] ?? '',
       mobile: map['mobile'] ?? '',
       image_path: map['image_path'],
+      recordedBy: map['recorded_by'],      // DB se load kiya
+      recordedById: map['recorded_by_id'], // DB se load kiya
       created_at: map['created_at'],
       updated_at: map['updated_at'],
     );
@@ -86,6 +98,8 @@ class Resident {
     resident_type TEXT NOT NULL,
     mobile TEXT NOT NULL UNIQUE,
     image_path TEXT, 
+    recorded_by TEXT,
+    recorded_by_id INTEGER,
     created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%fZ', 'now')),
     updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%fZ', 'now'))
   )

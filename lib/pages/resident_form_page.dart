@@ -2,7 +2,12 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/resident.dart';
-import '../database/database_helper.dart';
+import '../database/resident_dao.dart';
+import 'package:uuid/uuid.dart';
+import '../utils/session_manager.dart';
+import '../database/activity_log_dao.dart';
+import '../models/activity_log_model.dart';
+
 
 class ResidentFormPage extends StatefulWidget {
   final Resident? resident; // If null, we are Adding. If not null, we are Editing.
@@ -73,28 +78,77 @@ class _ResidentFormPageState extends State<ResidentFormPage> {
     }
   }
 
-
   Future<void> _saveResident() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final user = await SessionManager.getCurrentUser();
+    final int? userId = user['id'];
+    final String? userName = user['name'];
+
+    // Msg added
+    if (userId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Session expired. Please login again."), backgroundColor: Colors.red),
+        );
+      }
+      return;
+    }
+
+    final String now = DateTime.now().toIso8601String();
+    final isNew = widget.resident == null;
+
     final residentData = Resident(
       id: widget.resident?.id,
-      uuid: widget.resident?.uuid,
+      uuid: widget.resident?.uuid ?? const Uuid().v4(),
       name: _nameController.text.trim(),
       house_num: _flatController.text.trim(),
       resident_type: _selectedType,
       mobile: _mobileController.text.trim(),
       image_path: _selectedImagePath,
+      recordedBy: userName,
+      recordedById: userId,
     );
 
-    if (widget.resident == null) {
-      await DatabaseHelper.instance.insertResident(residentData.toMap());
-    } else {
-      await DatabaseHelper.instance.updateResident(residentData.toMap());
-    }
+    try {
+        if (isNew) {
+          //Get Id for new Record
+          final int newResidentId = await ResidentDao().insertResident(residentData.toMap());
 
-    if (mounted) Navigator.pop(context, true); // Return 'true' to refresh list
+          await ActivityLogDao().insertLog(ActivityLogModel(
+            userId: userId,
+            residentId: newResidentId,
+            action: "RESIDENT_ADDED: ${residentData.name} (${residentData.house_num})",
+            timestamp: now,
+          ));
+        } else {
+          await ResidentDao().updateResident(residentData.toMap());
+
+          await ActivityLogDao().insertLog(ActivityLogModel(
+            userId: userId,
+            residentId: residentData.id,
+            action: "RESIDENT_UPDATED: ${residentData.name}",
+            timestamp: now,
+          ));
+        }
+        // ... baki pop aur snackbar logic
+
+
+        if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(isNew ? "Resident saved!" : "Resident updated!")),
+        );
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -119,7 +173,7 @@ class _ResidentFormPageState extends State<ResidentFormPage> {
                   children: [
                     CircleAvatar(
                       radius: 60,
-                      backgroundColor: Colors.blue.withOpacity(0.1),
+                      backgroundColor: Colors.blue.withValues(alpha: 0.1),
                       backgroundImage: _selectedImagePath != null
                           ? FileImage(File(_selectedImagePath!))
                           : null,
@@ -183,6 +237,7 @@ class _ResidentFormPageState extends State<ResidentFormPage> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
                   onPressed: _saveResident,
                   child: Text(isEdit ? "UPDATE RESIDENT" : "SAVE RESIDENT"),
                 ),

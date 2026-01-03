@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:uuid/uuid.dart';
+import 'user_dao.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._internal();
@@ -14,16 +15,21 @@ class DatabaseHelper {
     return _database!;
   }
 
+  // Initialize the database
   Future<Database> _initDB() async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, 'residents.db');
 
     return await openDatabase(
       path,
-      version: 7,
+      version: 10,
       onCreate: (db, version) async {
-        await _createResidentsTable(db);
+        await _createActivityLogsTable(db);
         await _createGateEntriesTable(db);
+        await _createResidentsTable(db);
+        await _createVehiclesTable(db);
+        await _createUsersTable(db);
+        await UserDao().insertDefaultAdmin();
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if(oldVersion < 4){
@@ -38,10 +44,23 @@ class DatabaseHelper {
         if (oldVersion < 7) {
           await _createVehiclesTable(db); //residents vehicle table
         }
+        if (oldVersion < 8) {
+          await _createUsersTable(db);
+          await _createActivityLogsTable(db);
+          await UserDao().insertDefaultAdmin();
+        }
+        if (oldVersion < 9) {
+          await _addRecordedByToGateEntries(db);
+          await _addRecordedByToResidents(db);
+        }
+        if (oldVersion < 10) {
+          await _addRecorderIdColumns(db);
+        }
       },
     );
   }
 
+  // Create Residents Table
   Future<void> _createResidentsTable(Database db)async {
     await db.execute('''
           CREATE TABLE residents (
@@ -50,8 +69,10 @@ class DatabaseHelper {
             house_num TEXT,
             resident_type TEXT,
             mobile TEXT,
-            uuid TEXT, -- ADDED FOR fresh installs
+            uuid TEXT,
             image_path TEXT,
+            recorded_by TEXT,
+            recorded_by_id INTEGER,
             created_at TEXT,
             updated_at TEXT
           )
@@ -60,6 +81,7 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_res_uuid ON residents (uuid)');
   }
 
+  // Add UUID Column to Residents Table
   Future<void> _updateResidentsTable(Database db) async {
     // Use try-catch or check if column exists to prevent "duplicate column" crashes
     try {
@@ -85,6 +107,7 @@ class DatabaseHelper {
     print("Migration complete: UUIDs generated for existing records.");
   }
 
+  // Add Image Path Column to Residents Table
   Future<void> _addImagePathToResidents(Database db) async {
     try {
       // Adds the column to the existing table
@@ -95,6 +118,7 @@ class DatabaseHelper {
     }
   }
 
+  // Create Gate Entries Table
   Future<void> _createGateEntriesTable(Database db)async {
     await db.execute('''
           CREATE TABLE IF NOT EXISTS gate_entries (
@@ -110,13 +134,15 @@ class DatabaseHelper {
           exit_time TEXT,
           qr_code TEXT,
           remarks TEXT,
+          recorded_by TEXT,
+          recorded_by_id INTEGER,
           created_at TEXT,
           updated_at TEXT
         )
         ''');
   }
 
-  // Reusable function to create the table
+  // Create Vehicles Table
   Future _createVehiclesTable(Database db) async {
     await db.execute('''
       CREATE TABLE residents_vehicles (
@@ -126,6 +152,8 @@ class DatabaseHelper {
         vehicle_type TEXT,
         vehicle_color TEXT,
         vehicle_model TEXT,
+        recorded_by TEXT,
+        recorded_by_id INTEGER,
         created_at TEXT,
         updated_at TEXT,
         FOREIGN KEY (resident_id) REFERENCES residents (id) ON DELETE CASCADE
@@ -133,133 +161,71 @@ class DatabaseHelper {
     ''');
   }
 
-  Future<List<Map<String, dynamic>>> getAllResidents() async {
-    final db = await database;
-    return await db.query('residents');
+  // Create Users Table
+  Future<void> _createUsersTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE,
+        password TEXT,
+        full_name TEXT,
+        role TEXT,
+        created_at TEXT,
+        updated_at TEXT
+      )
+    ''');
   }
 
-  Future<List<Map<String, dynamic>>> getResidentsPageV1(int limit, int offset) async {
-    final db = await database;
-    return await db.query(
-      'residents',
-      orderBy: 'id DESC',
-      limit: limit,
-      offset: offset,
-    );
+  // Create Activity Logs Table
+  Future<void> _createActivityLogsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE activity_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        resident_id INTEGER,
+        action TEXT, -- 'SCANNED', 'EDITED', 'ADDED_VEHICLE'
+        timestamp TEXT,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
+      )
+    ''');
   }
 
-  Future<List<Map<String, dynamic>>> getResidentsPageV2(int limit, int offset) async {
-    final db = await database;
-
-    print("QUERY: limit=$limit offset=$offset");
-
-    final result = await db.rawQuery(
-        'SELECT id, uuid, name, house_num, resident_type, mobile, image_path, created_at, updated_at FROM residents ORDER BY id DESC LIMIT $limit OFFSET $offset'
-    );
-
-    print("RESULT COUNT = ${result.length}");
-    print(result);
-
-    return result;
-  }
-
-  Future<List<Map<String, dynamic>>> getResidentsPage(int limit, int offset, {String query = ""}) async {
-    final db = await instance.database;
-
-    if (query.isEmpty) {
-      // Original simple pagination
-      return await db.query(
-        'residents',
-        limit: limit,
-        offset: offset,
-        orderBy: 'id DESC',
-      );
-    } else {
-      // Search with pagination
-      return await db.query(
-        'residents',
-        where: 'name LIKE ? OR house_num LIKE ? OR mobile LIKE ?',
-        whereArgs: ['%$query%', '%$query%', '%$query%'],
-        limit: limit,
-        offset: offset,
-        orderBy: 'id DESC',
-      );
+  // Add Recorded By Column to Gate Entries
+  Future<void> _addRecordedByToGateEntries(Database db) async {
+    try {
+      await db.execute('ALTER TABLE gate_entries ADD COLUMN recorded_by TEXT');
+      print("Migration complete: Added recorded_by column to gate_entries.");
+    } catch (e) {
+      print("Column recorded_by might already exist: $e");
     }
   }
 
-  Future<void> insertResident(Map<String, dynamic> data) async {
-    final db = await database;
-    await db.insert('residents', data,
-        conflictAlgorithm: ConflictAlgorithm.replace);
-  }
-
-  Future<void> updateResident(Map<String, dynamic> data) async {
-    final db = await database;
-    await db.update(
-      'residents',
-      data,
-      where: 'id = ?',
-      whereArgs: [data['id']],
-    );
-  }
-
-  Future<void> deleteResident(String id) async {
-    final db = await database;
-    await db.delete('residents', where: 'id = ?', whereArgs: [id]);
-  }
-
-  Future<void> seedResidents() async {
-    final db = await database; // get your database instance
-
-    final List<Map<String, dynamic>> seedData = [
-      {"name": "Rahul Ranjan", "house_num": "101", "resident_type": "owner", "mobile": "9876543210", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Priya Singh", "house_num": "102", "resident_type": "owner", "mobile": "9876543211", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Amit Kumar", "house_num": "103", "resident_type": "owner", "mobile": "9876543212", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Sneha Sharma", "house_num": "104", "resident_type": "owner", "mobile": "9876543213", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Vikas Patel", "house_num": "105", "resident_type": "tenant", "mobile": "9876543214", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Neha Verma", "house_num": "106", "resident_type": "tenant", "mobile": "9876543215", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Rohit Singh", "house_num": "107", "resident_type": "tenant", "mobile": "9876543216", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Anjali Gupta", "house_num": "108", "resident_type": "tenant", "mobile": "9876543217", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Sanjay Mehta", "house_num": "109", "resident_type": "owner", "mobile": "9876543218", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Pooja Jain", "house_num": "110", "resident_type": "owner", "mobile": "9876543219", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Karan Sharma", "house_num": "111", "resident_type": "owner", "mobile": "9876543220", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Tanya Roy", "house_num": "112", "resident_type": "owner", "mobile": "9876543221", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Manish Agarwal", "house_num": "113", "resident_type": "tenant", "mobile": "9876543222", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Ritika Sinha", "house_num": "114", "resident_type": "tenant", "mobile": "9876543223", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Ajay Singh", "house_num": "115", "resident_type": "tenant", "mobile": "9876543224", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Shreya Nair", "house_num": "116", "resident_type": "tenant", "mobile": "9876543225", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Vivek Joshi", "house_num": "117", "resident_type": "owner", "mobile": "9876543226", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Anita Desai", "house_num": "118", "resident_type": "owner", "mobile": "9876543227", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Ramesh Kumar", "house_num": "119", "resident_type": "owner", "mobile": "9876543228", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-      {"name": "Priyanka Malhotra", "house_num": "120", "resident_type": "owner", "mobile": "9876543229", "created_at": DateTime.now().toIso8601String(), "updated_at": DateTime.now().toIso8601String()},
-    ];
-
-    for (var r in seedData) {
-      await db.insert('residents', r);
+  // Add Recorded By Column to Residents
+  Future<void> _addRecordedByToResidents(Database db) async {
+    try {
+      await db.execute('ALTER TABLE residents ADD COLUMN recorded_by TEXT');
+      print("Migration complete: Added recorded_by to residents.");
+    } catch (e) {
+      print("Column recorded_by might already exist in residents: $e");
     }
   }
 
-  // Ab ye List<Map> lega, jo optimized hai
-  Future<void> importResidents(List<Map<String, dynamic>> residents) async {
-    final db = await database;
-    Batch batch = db.batch();
+  // Add Recorder ID Columns
+  Future<void> _addRecorderIdColumns(Database db) async {
+    try {
+      // Gate Entries
+      await db.execute('ALTER TABLE gate_entries ADD COLUMN recorded_by_id INTEGER');
 
-    for (var resident in residents) {
-      batch.insert(
-        'residents',
-        resident,
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      // Residents
+      await db.execute('ALTER TABLE residents ADD COLUMN recorded_by_id INTEGER');
+
+      // Vehicles
+      await db.execute('ALTER TABLE residents_vehicles ADD COLUMN recorded_by TEXT');
+      await db.execute('ALTER TABLE residents_vehicles ADD COLUMN recorded_by_id INTEGER');
+
+      print("Migration complete: Added recorder ID columns to all tables.");
+    } catch (e) {
+      print("Error in version 10 migration: $e");
     }
-
-    await batch.commit(noResult: true);
-  }
-
-  // inside lib/database/database_helper.dart
-  Future<int> getTotalResidentsCount() async {
-    final db = await instance.database;
-    // sqflite provides firstIntValue to easily parse COUNT results
-    final result = await db.rawQuery('SELECT COUNT(*) FROM residents');
-    return Sqflite.firstIntValue(result) ?? 0;
   }
 }

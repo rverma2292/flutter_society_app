@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../models/resident.dart';
-import '../database/database_helper.dart';
+import '../database/resident_dao.dart';
 import 'full_screen_qr_page.dart';
 
 class ShowQRPage extends StatefulWidget {
@@ -52,8 +52,7 @@ Future<void> loadMoreResidents() async {
 
   setState(() => isLoading = true);
 
-  final rows = await DatabaseHelper.instance
-      .getResidentsPage(limit, page * limit);
+  final rows = await ResidentDao().getResidentsPage(limit, page * limit);
 
   if (rows.isEmpty) {
     setState(() => hasMore = false);

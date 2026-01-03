@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:image_picker/image_picker.dart';
 import '../database/database_helper.dart';
+import '../database/resident_dao.dart';
 import 'resident_detail_page.dart';
 import 'resident_not_found_page.dart';
 
@@ -34,7 +35,7 @@ class _ScanQRPageState extends State<ScanQRPage> {
   }
 
   Future<void> loadResidents() async {
-    final data = await DatabaseHelper.instance.getAllResidents();
+    final data = await ResidentDao().getAllResidents();
     if (mounted) {
       setState(() {
         residents = data;

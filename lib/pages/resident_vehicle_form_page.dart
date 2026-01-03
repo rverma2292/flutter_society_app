@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../models/resident_vehicle_model.dart';
 import '../database/resident_vehicle_dao.dart';
 import '../database/resident_dao.dart'; // Import ResidentDao
+import '../utils/session_manager.dart';
+import '../database/activity_log_dao.dart';
+import '../models/activity_log_model.dart';
 
 class ResidentVehicleFormPage extends StatefulWidget {
   final int? residentId;
@@ -80,12 +83,25 @@ class _ResidentVehicleFormPageState extends State<ResidentVehicleFormPage> {
   }
 
   Future<void> _saveVehicle() async {
-    if (_selectedResidentId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select a resident first")),
-      );
-      return;
-    }
+      final user = await SessionManager.getCurrentUser();
+      final int? userId = user['id'];
+      final String? userName = user['name'];
+      if (userId == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Session expired. Please login again."), backgroundColor: Colors.red),
+          );
+        }
+        return;
+      }
+      final String now = DateTime.now().toIso8601String();
+      final bool isNew = widget.vehicle == null;
+        if (_selectedResidentId == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Please select a resident first")),
+          );
+          return;
+        }
 
     if (_formKey.currentState!.validate()) {
       final dao = ResidentVehicleDao();
@@ -98,18 +114,50 @@ class _ResidentVehicleFormPageState extends State<ResidentVehicleFormPage> {
         vehicleType: _selectedType,
         vehicleColor: _selectedColor,
         vehicleModel: _modelController.text.trim(),
+        recordedBy: userName,
+        recordedById: userId,
         createdAt: widget.vehicle?.createdAt ?? now,
         updatedAt: now,
       );
 
-      if (widget.vehicle == null) {
-        await dao.insertVehicle(vehicle);
-      } else {
-        await dao.updateVehicle(vehicle);
-      }
+      try {
+        if (isNew) {
+          // 1. Insert and Get new Id
+          final int newVehicleId = await ResidentVehicleDao().insertVehicle(vehicle.toMap());
 
-      if (!mounted) return;
-      Navigator.pop(context, true);
+          // 2. Activity Log: New Vehicle Inserted ( With Inserted ID )
+          await ActivityLogDao().insertLog(ActivityLogModel(
+            userId: userId,
+            residentId: _selectedResidentId,
+            action: "VEHICLE_ADDED: ${vehicle.vehicleNumber} (ID: $newVehicleId)",
+            timestamp: now,
+          ));
+        } else {
+          // 3. Update case
+          await ResidentVehicleDao().updateVehicle(vehicle.toMap());
+
+          // 4. Activity Log: Update hua
+          await ActivityLogDao().insertLog(ActivityLogModel(
+            userId: userId,
+            residentId: _selectedResidentId,
+            action: "VEHICLE_UPDATED: ${vehicle.vehicleNumber}",
+            timestamp: now,
+          ));
+        }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(isNew ? "Vehicle registered successfully" : "Vehicle details updated")),
+      );
+      Navigator.pop(context, true); // Refresh list
+    }
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+      );
+    }
+  }
     }
   }
 

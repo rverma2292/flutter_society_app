@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../database/resident_vehicle_dao.dart';
 import '../models/resident_vehicle_model.dart';
 import 'resident_vehicle_form_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class VehicleListPage extends StatefulWidget {
   const VehicleListPage({super.key});
@@ -13,6 +14,16 @@ class VehicleListPage extends StatefulWidget {
 class _VehicleListPageState extends State<VehicleListPage> {
   final ResidentVehicleDao _vehicleDao = ResidentVehicleDao();
   final ScrollController _scrollController = ScrollController();
+  String userRole = 'guard'; // Default role
+
+  Future<void> _loadUserRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        userRole = prefs.getString('userRole') ?? 'guard';
+      });
+    }
+  }
 
   // State variables for pagination
   final List<Map<String, dynamic>> _vehicles = [];
@@ -26,6 +37,7 @@ class _VehicleListPageState extends State<VehicleListPage> {
   @override
   void initState() {
     super.initState();
+    _loadUserRole();
     _loadMoreVehicles(isRefresh: true);
     _scrollController.addListener(_onScroll);
   }
@@ -173,7 +185,8 @@ class _VehicleListPageState extends State<VehicleListPage> {
                       title: Text(v['vehicle_number'], style: const TextStyle(fontWeight: FontWeight.bold)),
                       subtitle: Text("Owner: ${v['resident_name']} (${v['house_num']})"),
                       trailing: _buildTrailing(v['vehicle_color']),
-                      onTap: () async {
+                      onTap: userRole.toLowerCase() == 'admin'
+                          ? () async {
                         final refresh = await Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -184,7 +197,9 @@ class _VehicleListPageState extends State<VehicleListPage> {
                           ),
                         );
                         if (refresh == true) _loadMoreVehicles(isRefresh: true);
-                      },
+                      }
+                      : null,
+
                     ),
                   );
                 },
@@ -193,12 +208,11 @@ class _VehicleListPageState extends State<VehicleListPage> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-      backgroundColor: Colors.blue,
-      foregroundColor: Colors.white,
+      floatingActionButton: userRole.toLowerCase() == 'admin'
+          ? FloatingActionButton(
+        backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
         onPressed: () async {
-          // Now calling the form directly with residentId as null
-          // The form will show the resident picker internally
           final refresh = await Navigator.push(
             context,
             MaterialPageRoute(
@@ -212,9 +226,9 @@ class _VehicleListPageState extends State<VehicleListPage> {
             _loadMoreVehicles(isRefresh: true);
           }
         },
-
         child: const Icon(Icons.add),
-    ),
+      )
+          : null,
     );
   }
 
