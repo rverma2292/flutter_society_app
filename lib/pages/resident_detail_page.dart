@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/resident_vehicle_model.dart';
 import '../database/resident_vehicle_dao.dart';
 import 'resident_vehicle_form_page.dart';
+import '../utils/session_manager.dart';
 
 class ResidentDetailsPage extends StatefulWidget {
   final Map<String, dynamic> resident;
@@ -16,6 +17,20 @@ class ResidentDetailsPage extends StatefulWidget {
 class _ResidentDetailsPageState extends State<ResidentDetailsPage> {
   // Key to force FutureBuilder to refresh when we call setState
   Key _futureBuilderKey = UniqueKey();
+  String? _currentUserRole;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkUserRole(); // Role check function call karein
+  }
+
+  Future<void> _checkUserRole() async {
+    final user = await SessionManager.getCurrentUser();
+    setState(() {
+      _currentUserRole = user['role']; // 'admin' ya 'guard'
+    });
+  }
 
   void _refreshData() {
     setState(() {
@@ -110,23 +125,31 @@ class _ResidentDetailsPageState extends State<ResidentDetailsPage> {
               children: [
                 const Text(
                   "VEHICLE DETAILS",
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.green),
+                  style: TextStyle(fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green),
                 ),
-                TextButton.icon(
-                  onPressed: () async {
-                    final refresh = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ResidentVehicleFormPage(residentId: widget.resident['id']),
-                      ),
-                    );
-                    if (refresh == true) _refreshData();
-                  },
-                  icon: const Icon(Icons.add, size: 18, color: Colors.green),
-                  label: const Text("ADD", style: TextStyle(color: Colors.green)),
-                ),
+                // SIRF ADMIN KO DIKHEGA
+                if (_currentUserRole == 'admin')
+                  TextButton.icon(
+                    onPressed: () async {
+                      final refresh = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              ResidentVehicleFormPage(
+                                  residentId: widget.resident['id']),
+                        ),
+                      );
+                      if (refresh == true) _refreshData();
+                    },
+                    icon: const Icon(Icons.add, size: 18, color: Colors.green),
+                    label: const Text(
+                        "ADD", style: TextStyle(color: Colors.green)),
+                  ),
               ],
             ),
+
             const SizedBox(height: 10),
 
             FutureBuilder<List<ResidentVehicle>>(
@@ -212,6 +235,16 @@ class _ResidentDetailsPageState extends State<ResidentDetailsPage> {
 
     return GestureDetector(
       onTap: () async {
+        // --- ADMIN CHECK ADDED HERE ---
+        if (_currentUserRole != 'admin') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Only Admin can edit vehicles"),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
         final refresh = await Navigator.push(
           context,
           MaterialPageRoute(
@@ -278,7 +311,7 @@ class _ResidentDetailsPageState extends State<ResidentDetailsPage> {
       child: Row(
         children: [
           CircleAvatar(
-            backgroundColor: Colors.green.withOpacity(0.1),
+            backgroundColor: Colors.green.withValues(alpha: 0.1),
             child: Icon(icon, color: Colors.green),
           ),
           const SizedBox(width: 16),
